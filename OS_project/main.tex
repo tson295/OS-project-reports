@@ -1,0 +1,1863 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage{tabularx}
+% --- tiếng Việt ---
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnam]{babel}
+% --- bố cục & tiện ích ---
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{comment}
+\usepackage{subcaption}   % cho môi trường subfigure
+\captionsetup[subfigure]{labelformat=empty}
+
+\usepackage{placeins}     % cho \FloatBarrier
+
+% >>> PHẦN PETERSON <<<
+\usepackage{amsmath,amsthm}      % lemma, proof, toán
+\usepackage{algorithm}           % môi trường algorithm
+\usepackage[noend]{algpseudocode}      % môi trường algorithmic
+\usepackage{float}               % cho tùy chọn [H] của float
+\newtheorem{lemma}{Yêu cầu}
+\newtheorem{theorem}{Định lý}
+
+% set lemma to {1, 2, 3}
+\ExplSyntaxOn
+\renewcommand{\thelemma}{\int_eval:n { \int_mod:nn { \value{lemma}-1 } { 3 } + 1 }}
+\ExplSyntaxOff
+
+\hypersetup{colorlinks=true, urlcolor=blue, linkcolor=black}
+
+% --- thông tin dễ chỉnh ---
+\newcommand{\university}{\textbf{ĐẠI HỌC BÁCH KHOA HÀ NỘI}}
+\newcommand{\faculty}{\textbf{TRƯỜNG CÔNG NGHỆ THÔNG TIN VÀ TRUYỀN THÔNG}}
+\newcommand{\course}{Nguyên lý Hệ điều hành}
+\newcommand{\reporttitle}{\textbf{BÁO CÁO BÀI TẬP LỚN}}
+\newcommand{\teacher}{TS.Phạm Đăng Hải}
+\newcommand{\dateofreport}{\today}
+\newcommand{\reporttopic}{Tìm hiểu một số thuật toán điều độ tài nguyên găng}
+
+% 4 thành viên
+\newcommand{\mema}{Nguyễn Vi Thái Sơn}
+\newcommand{\memb}{Kim Việt Tiến}
+\newcommand{\memc}{Phạm Quang Vinh}
+\newcommand{\memd}{Nông Đức Toàn}
+\newcommand{\authorsinline}{\mema, \memb, \memc, \memd}
+
+% --- header / footer ---
+\pagestyle{fancy}
+\fancyhf{}
+% Tăng chiều cao header và khoảng cách để không đè nội dung
+\setlength{\headheight}{28pt}
+\setlength{\headsep}{12pt}
+% Chia tên thành 2 dòng ở góc phải cho gọn
+\fancyhead[L]{\small \course}
+\fancyhead[R]{\footnotesize\shortstack[r]{\mema, \memb\\ \memc, \memd}}
+\cfoot{\thepage}
+
+% --- style tiêu đề chương ---
+\titleformat{\chapter}{\bfseries\Large}{\thechapter.}{8pt}{}
+
+% Đổi tiêu đề mục tài liệu tham khảo
+\renewcommand{\bibname}{References}
+
+\begin{document}
+
+% ======================= TRANG BÌA =======================
+\begin{titlepage}
+    \centering
+    \vspace*{0.5cm}
+
+    {\Large \university\\[2pt]
+    \large \faculty\par}
+
+    \vspace{1.5cm}
+    \includegraphics[width=0.28\textwidth]{images/logo-hust.png}
+
+    \vspace{1.6cm}
+    {\LARGE \reporttitle\par}
+
+    % --- CHỦ ĐỀ ---
+    \vspace{0.4cm}
+    {\large \textbf{Chủ đề:} \reporttopic\par}
+
+    % --- THÀNH VIÊN: 1 DÒNG NGANG, CĂN GIỮA ---
+    \vspace{0.6cm}
+    {\small \textbf{Thành viên:}
+    \makebox[\textwidth][c]{\mema\enspace—\enspace\memb\enspace—\enspace\memc\enspace—\enspace\memd}\par}
+
+    \vspace{1.2cm}
+    \begin{tabular}{>{\bfseries}r l}
+        Học phần: & \course \\
+        Người hướng dẫn: & \teacher \\
+        Ngày thực hiện: & November 1, 2025 \\
+    \end{tabular}
+
+    \vfill
+\end{titlepage}
+
+% ======================= MỤC LỤC =======================
+
+
+% ======= (không đánh số) Lời mở đầu / Giới thiệu =======
+% \chapter*{Giới thiệu}
+% \addcontentsline{toc}{chapter}{Giới thiệu}
+% TODO
+
+% ======================= Chương 1 =======================
+%\chapter{Giới thiệu}
+
+\begin{center}
+    \LARGE\bfseries LỜI NÓI ĐẦU
+\end{center}
+\addcontentsline{toc}{section}{\textbf{LỜI NÓI ĐẦU}}
+Trong nguyên lí hệ điều hành, \textbf{tiến trình} được hiểu là một chương trình đang trong trạng thái thực thi. Để hoạt động, mỗi tiến trình đều đòi hỏi được cấp phát các tài nguyên thiết yếu như CPU, bộ nhớ, hay các thiết bị ngoại vi. Trong số đó, tồn tại những tài nguyên hạn chế về khả năng sử dụng chung và cần thiết cho nhiều tiến trình cùng lúc, được gọi là \textbf{tài nguyên găng (Critical Resource)}. \\
+Nếu các tiến trình tranh nhau truy cập vào tài nguyên này một cách tự do, sự xung đột dữ liệu là điều tất yếu. Để dễ hình dung, hãy tưởng tượng một ngã tư đường hẹp không có đèn tín hiệu (tài nguyên găng). Nếu các phương tiện (tiến trình) cứ lao vào cùng lúc mà không có sự điều phối, tai nạn và ùn tắc sẽ xảy ra. Tương tự, trong máy tính, điều này dẫn đến sai lệch thông tin và mất tính toàn vẹn dữ liệu. \\
+Do đó, hệ điều hành bắt buộc phải có chương trình điều độ tài nguyên găng để đồng bộ hóa các tiến trình. Một giải pháp điều độ hiệu quả cần phải thỏa mãn ba \hypertarget{Request}{điều kiện sau:}
+
+\begin{itemize}
+    \item \textbf{Loại trừ lẫn nhau (Mutual Exclusion):} Mỗi thời điểm, tài nguyên găng không phải phục vụ một số lượng tiến trình vượt quá khả năng của nó.
+    
+    \item \textbf{Tiến triển (Progress):} Tài nguyên găng còn khả năng phục vụ và tồn tại tiến trình muốn vào đoạn găng, thì tiến trình đó phải được sử dụng tài nguyên găng.
+    
+    \item \textbf{Chờ đợi hữu hạn (Bounded Waiting):} Nếu tài nguyên găng hết khả năng phục vụ và vẫn tồn tại tiến trình muốn vào đoạn găng, thì tiến trình đó phải được xếp hàng chờ đợi và chờ đợi là hữu hạn.
+\end{itemize}
+
+Trong báo cáo này, chúng ta cùng đi sâu vào phân tích các thuật toán giải quyết vấn đề trên, đi từ \textbf{công cụ điều độ cấp thấp đến các công cụ điều độ cấp cao}, đồng thời chứng minh tính hợp lý của chúng theo đúng các nguyên tắc đã đề ra.
+
+% --- GIỚI THIỆU (thay cho phần trống ở chương Giới thiệu của bạn) ---
+\begin{comment}
+Quản lí tài nguyên là vấn đề trung tâm của hệ điều hành. CPU, bộ nhớ, thiết bị I/O, tệp, ổ khoá dữ liệu… đều có \textit{công suất hữu hạn} nhưng lại phải phục vụ đồng thời nhiều tiến trình. Khi nhiều thực thể cùng tranh chấp, nếu không có cơ chế kiểm soát, hệ thống rất dễ rơi vào \emph{race condition}, \emph{deadlock} hoặc \emph{starvation}.
+
+\textbf{Tài nguyên găng} (critical resource) là những tài nguyên mà tại một thời điểm chỉ nên phục vụ một tiến trình trong \textit{đoạn găng} (critical section) để bảo toàn bất biến dữ liệu. Hình dung ngoài đời: một cây cầu một làn chỉ cho phép từng xe đi qua; một nhà vệ sinh công cộng phải khoá cửa để “độc chiếm” trong lúc sử dụng; hay một quầy tính tiền siêu thị cần xếp hàng theo lượt. Trong máy tính, các ví dụ tương ứng là máy in dùng chung, vùng nhớ chia sẻ, tệp nhật ký (log) hay một bộ đếm toàn cục — mọi nơi mà hai thao tác xen kẽ có thể làm hỏng dữ liệu.
+
+Vì vậy, \textit{điều độ/đồng bộ} truy cập tài nguyên găng là cần thiết: vừa để \textbf{an toàn dữ liệu}, vừa để hệ thống \textbf{tiếp tục tiến lên} và \textbf{không thiên vị}. Báo cáo này sử dụng ba tiêu chí tối thiểu để đánh giá tính đúng đắn của lời giải đoạn găng (\S\ref{request}): \emph{Loại trừ lẫn nhau (Mutual Exclusion)}, \emph{Tiến triển (Progress)} và \emph{Chờ đợi hữu hạn (Bounded Waiting)}.
+
+\textbf{Trong báo cáo này}, chúng em khảo sát một số thuật toán/cơ chế tiêu biểu:
+(1) cấp thấp, không cần hỗ trợ phần cứng: \emph{Peterson} (2 tiến trình) và \emph{Bakery} (N tiến trình);
+(2) dựa trên hỗ trợ phần cứng/hệ điều hành: \emph{Test-and-Set/TTAS}, \emph{Ticket/MCS lock}, \emph{Semaphore} và \emph{Monitor}.
+Mỗi cơ chế được trình bày dưới ba góc nhìn: \textit{ý tưởng}, \textit{đáp ứng ba yêu cầu} và \textit{minh hoạ thực nghiệm} (dùng \texttt{CreateThread} trên Windows, so sánh hành vi có/không đồng bộ qua log/ảnh).
+
+\textbf{Phạm vi \& phương pháp.} Chúng em giả định thao tác đọc/ghi cờ và biến chia sẻ là nguyên tử, chú ý vấn đề “tầm nhìn bộ nhớ” trên đa lõi; phần lý thuyết dựa trên bất biến và lập luận tiến triển, phần thực nghiệm tái lập các tình huống tranh chấp điển hình (ví dụ biến \texttt{y} được cập nhật xen kẽ, \texttt{x=y+1} quan sát kết quả).
+
+\textbf{Cấu trúc tài liệu.} Chương~\ref{request} nêu tiêu chí đánh giá; các chương tiếp theo lần lượt trình bày công cụ cấp thấp, cơ chế dựa phần cứng/hệ điều hành, và thảo luận kết quả, hạn chế cùng tài liệu tham khảo.
+
+
+% ======================= Chương 2 =======================
+\chapter{Yêu cầu của chương trình điều độ}
+\label{request}
+
+\section*{Các yêu cầu cốt lõi}
+Mục tiêu của lời giải đoạn găng là giữ dữ liệu luôn đúng, đảm bảo hệ thống vẫn tiến lên và không bị đói tài nguyên. Vì thế, ba yêu cầu dưới đây là tiêu chí tối thiểu để đánh giá mọi thuật toán đồng bộ đoạn găng.
+
+\begin{itemize}
+  \item \textbf{Loại trừ lẫn nhau (Mutual Exclusion):}
+  Mỗi thời điểm, tài nguyên găng không phục vụ quá khả năng của nó.
+  Nếu một tiến trình đang ở đoạn găng, không tiến trình nào khác được vào đoạn găng.
+
+  \item \textbf{Tiến triển (Progress):}
+  Khi tài nguyên găng còn khả năng phục vụ và có tiến trình muốn vào đoạn găng,
+  thì tiến trình đó phải được cấp quyền trong hữu hạn bước (không bị trì hoãn vô hạn bởi tiến trình không liên quan).
+
+  \item \textbf{Chờ đợi hữu hạn (Bounded Waiting):}
+  Nếu tài nguyên găng hết khả năng phục vụ và vẫn có tiến trình muốn vào,
+  tiến trình đó phải được xếp hàng chờ và thời gian chờ là hữu hạn.
+\end{itemize}
+
+% -------- Bổ sung (không thay đổi nội dung cốt lõi) --------
+  \subsection* {Ý nghĩa của các yêu cầu} 
+  \begin{itemize}
+      \item \textbf{Loại trừ lẫn nhau (Mutual Exclusion)} giúp bảo vệ dữ liệu, các tiến trình không thể ghi đè dữ liệu của nhau.
+      \item \textbf{Tiến triển (Progress)} giúp đảm bảo hệ không đứng hình khi tài nguyên còn khả năng phục vụ.
+      \item \textbf{Chờ đợi hữu hạn (Bounded Waiting)} ngăn ngừa tình trạng một tiến trình không bao giờ được dùng tài nguyên.
+  \end{itemize} 
+  
+  \subsection*{Quan hệ giữa các yêu cầu}
+    \begin{itemize}
+      \item Chỉ có \textbf{Mutual Exclusion} \(\Rightarrow\) vẫn có thể kẹt do \textbf{deadlock/livelock}.
+      \item \textbf{Mutual Exclusion} + \textbf{Progress} nhưng thiếu \textbf{Bounded Waiting} \(\Rightarrow\) vẫn có thể đói tài nguyên.
+      \item Đủ cả ba \(\Rightarrow\) lời giải đoạn găng đúng đắn.
+    \end{itemize}
+
+\end{comment}
+
+\renewcommand{\contentsname}{Mục lục}
+\tableofcontents
+\newpage
+
+% ======================= Chương 3 =======================
+\chapter{Công cụ điều độ cấp thấp}
+\section{Không có sự hỗ trợ phần cứng}
+
+\subsection{Peterson }
+\label{subsec:peterson}
+\textbf{Nguồn gốc:}
+Giải thuật Peterson do Gary Peterson đề xuất năm 1981 cho bài toán đoạn găng. Giải thuật Peterson thuộc nhóm giải pháp phần mềm, không đòi hỏi sự hỗ trợ từ phía phần cứng hay hệ điều hành và được xem là đại diện tiêu biểu cho nhóm giải pháp phần mềm nhờ ưu điểm đơn giản và dễ cài đặt.
+
+\subsection*{ Mô tả bài toán}
+ Cho hai tiến trình $P_0, P_1$ cùng truy cập một tài nguyên găng duy nhất. Thiết kế thuật toán điều độ đoạn găng thỏa mãn các \hyperlink{Request}{điều kiện tiên quyết}
+\subsection*{ Nguyên tắc }
+\begin{itemize}[noitemsep]
+    \item  Tiến trình $P_i$ dùng biến want[i] trong bộ nhớ nhớ chung làm khóa và một biến turn (dùng chung) để chỉ ra tiến trình có quyền ưu tiên.
+    \item Nếu cả hai cùng xin, ai ghi turn sau cùng sẽ nhường.
+    \item Nếu tiến trình muốn vào đoạn găng thì phải kiểm tra khóa của tiến trình còn lại và quyền ưu tiên đang thuộc về tiến trình nào.
+    \item Ban đầu \texttt{wait[0] $\gets$ false, wait[1] $\gets$ false}
+\end{itemize}
+
+
+
+\subsection*{Thuật toán điều độ}
+\begin{algorithm}[H]
+\caption{Peterson cho tiến trình $P_i$ ($j = 1 - i$)}
+\begin{algorithmic}[1]
+\State \textbf{Entry:}
+\State \texttt{want[i] $\gets$ true;} \Comment{P$_i$ thông báo đang muốn vào đoạn găng}
+\State \texttt{turn $\gets$ j;} \Comment{Nhường quyền ưu tiên cho P$_j$ nếu hai bên cùng xin}
+\While{\texttt{want[j]} \textbf{and} \texttt{turn == j}} \textit{/*busy-wait*/} \Comment{Nếu P$_j$ cũng muốn vào \& đang được ưu tiên thì chờ}
+\EndWhile
+\State \textbf{Đoạn găng của tiến trình $P_i$} \Comment{Chỉ P$_i$ được vào tại thời điểm này}
+\State \textbf{Exit:} \texttt{want[i] $\gets$ false;} \Comment{P$_i$ rời đoạn găng, bỏ yêu cầu}
+\State \textbf{Phần còn lại của tiến trình $P_i$} \Comment{Thực hiện công việc ngoài đoạn găng}
+\end{algorithmic}
+\end{algorithm}
+
+
+% \paragraph{Bất biến chìa khoá.}
+% Tại mọi thời điểm, nếu cả $P_0$ và $P_1$ đều chờ ở vòng \texttt{while} thì \texttt{turn} mang giá trị của \emph{một} trong hai tiến trình, và chỉ tiến trình \emph{không được ưu tiên} mới tiếp tục bị chặn.
+
+\subsection*{Chứng minh tính hợp lý của điều độ}
+
+\begin{lemma}[Loại trừ lẫn nhau]
+Không thể xảy ra việc cả $P_0$ và $P_1$ cùng ở đoạn găng.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh}]
+Giả sử ngược lại cả hai cùng vào Đoạn găng. Khi vào Đoạn găng, mỗi tiến trình $P_i$ đã thoát khỏi điều kiện \texttt{want[j] \&\& turn == j}. Do đó với $P_0$ vào Đoạn găng hoặc \texttt{want[1] = false} hoặc \texttt{turn = 0}. Tương tự, với $P_1$ vào Đoạn găng, hoặc \texttt{want[0] = false} hoặc \texttt{turn = 1}. Nhưng tại thời điểm cả hai cùng vào Đoạn găng ta có \texttt{want[0] = want[1] = true}. Vậy ta phải có \texttt{turn = 0} và \texttt{turn = 1}, mâu thuẫn.
+\end{proof}
+
+\begin{lemma}[Tiến triển]
+Nếu tài nguyên găng còn khả năng phục vụ và có tiến trình muốn vào Đoạn găng thì
+ tiến trình đó phải được sử dụng tài nguyên găng.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh}]
+Giả sử $P_i$ là tiến trình đang muốn vào Đoạn găng. Ta xét 3 trường hợp sau.\\
+\begin{itemize}
+\item \textbf{TH1:} $P_j$ đang dừng ở vòng lặp while. \\
+Lúc này {\texttt{want[i] == true} và \texttt{turn == i}} Do đó $P_i$ sẽ vào Đoạn găng.
+\item \textbf{TH2:} $P_j$ đang ở trong Đoạn găng.
+Sau khi $P_j$ ra khỏi Đoạn găng, nó sẽ thực hiện {\texttt{want[j] $\gets$ false}}. Lúc này điều kiện lặp while vi phạm nên $P_i$ cũng sẽ thoát khởi while và vào Đoạn găng.
+\item \textbf{TH3:} $P_j$ đang ở trong phần còn lại của tiến trình.
+Sau khi thực hiện xong phần còn lại, $P_j$ sẽ quay lại \textbf{Entry} và thực hiện \texttt{turn} $\gets$ $i$. Do đó $P_i$ cũng sẽ vào Đoạn găng. 
+\end{itemize}
+\end{proof}
+
+\begin{lemma}[Chờ đợi hữu hạn]
+Mỗi lần $P_i$ yêu cầu vào Đoạn găng, nó bị vượt qua bởi $P_j$ nhiều nhất một lần.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh}]
+Khi $P_i$ vào \textbf{Entry}, nó gán \texttt{turn = j}, nhường ưu tiên \emph{một lần} cho $P_j$. Sau khi $P_j$ vào và rời Đoạn găng, \texttt{want[j]} trở thành \texttt{false}; điều kiện chờ của $P_i$ trở thành sai, nên $P_i$ sẽ vào. Vì \texttt{turn} chỉ cho phép $P_j$ ưu tiên tối đa một lượt, $P_i$ không thể bị vượt quá hơn một lần.
+\end{proof}
+
+\subsection*{Kết quả và thảo luận}
+Thiết lập đơn giản với 2 luồng. Luồng \texttt{T1} in ra $x = y + 1$ liên tục, luồng \texttt{T2} cập nhật $y = 2; y = y * 2;$. Ban đầu y = 1. \\
+\subsection*{Khi không đồng bộ}
+\begin{itemize}
+    \item \texttt{T1} có thể đọc $y$ ngay sau lệnh y = 2; của \texttt{T2}, trước khi \texttt{T2} kịp thực hiện lệnh $y = y * 2$;. Lúc đó, \texttt{T1} thấy $y = 2$, và $x$ in ra là 3. Do đó các giá trị có thể được in ra là $\{2, 3, 5\}$
+\end{itemize}
+
+\FloatBarrier
+
+\begin{figure}
+    \captionsetup{labelformat=empty} % Chỉ áp dụng cho hình này
+    \centering
+    \includegraphics[width=0.5\linewidth]{images/peterson_3.png}
+    \caption{\textbf{Hình 1:} Không đồng bộ}
+    \label{fig:placeholder}
+\end{figure}
+
+\FloatBarrier
+
+\subsection*{Khi đồng bộ} 
+\begin{itemize}
+    \item Toàn bộ quá trình cập nhật của  \texttt{T2} $(y = 2; y = y * 2;)$ được bảo vệ trong một vùng găng. Do đó \texttt{T1} phải đợi cho tới khi \texttt{T2} đã hoàn thành. Lúc này $y = 4$ nên $x = 5$.
+    \item Kết quả từ thực nghiệm cho thấy ở Hình~1.1 có hai số 2 đầu tiên. Lý do: lúc khởi động, \texttt{T2} chưa đặt \texttt{want[1] $\gets$ true} (chưa yêu cầu vào đoạn găng) nên điều kiện chờ của \texttt{T1} là \verb|false| và \texttt{T1} có thể vào lại ngay, in thêm một lần 2 nữa. Khi \texttt{T2} bắt đầu yêu cầu và vào đoạn găng thì \texttt{T1} phải đợi. Từ đó về sau chỉ còn 5. Số lần xuất hiện 2 ban đầu phụ thuộc Scheduler và có thể khác nhau, nhưng thường rất ít.
+\end{itemize}
+
+\FloatBarrier  % đảm bảo ảnh xuất hiện sau phần chứng minh, không “chạy” lên trên
+
+% HÀNG TRÊN
+\begin{figure}[H]
+  \centering
+  \captionsetup[subfigure]{justification=centering}
+
+  \begin{subfigure}[t]{0.48\textwidth}\centering
+    \includegraphics[height = 4.5cm, width=\linewidth]{images/peterson_1.png}
+    \caption{\textbf{Hình 1.1:} \texttt{T1} thực hiện trước}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\textwidth}\centering
+    \includegraphics[height = 4.5cm, width=\linewidth]{images/peterson_2.png}
+    \caption{\textbf{Hình 1.2:} \texttt{T2} thực hiện trước}
+  \end{subfigure}
+\end{figure}
+
+
+
+\FloatBarrier
+
+\subsection{Lamport's Bakery Algorithm (Thuật toán tiệm bánh của Lamport)}
+
+\label{subsec:bakery}
+
+\textbf{Nguồn gốc:}
+Thuật toán Bakery do Leslie Lamport đề xuất năm 1974 để giải bài toán đoạn găng cho nhiều tiến trình ($n > 2$) chỉ sử dụng thao tác đọc/ghi biến chia sẻ. Giống như Peterson, Bakery là một giải pháp phần mềm thuần túy, không yêu cầu các lệnh đặc biệt từ phần cứng. Ý tưởng mô phỏng việc phát số thứ tự trong tiệm bánh, đảm bảo thứ tự công bằng giữa các tiến trình.
+
+\subsection*{Mô tả bài toán}
+Có $n$ tiến trình $P_1, P_2, \dots, P_n$ cùng truy cập một tài nguyên găng duy nhất. Thiết kế thuật toán điều độ sao cho thỏa mãn các \hyperlink{Request}{điều kiện tiên quyết}
+
+\subsection*{Nguyên tắc}
+\begin{itemize}[noitemsep]
+    \item Mỗi tiến trình $P_i$ có:
+    \begin{itemize}[noitemsep]
+        \item \texttt{choosing[i]}: đang chọn số thứ tự,
+        \item \texttt{number[i]}: số thứ tự hiện tại (vé xếp hàng).
+    \end{itemize}
+    \item Khi muốn vào Đoạn găng, $P_i$:
+    \begin{enumerate}[noitemsep]
+        \item Đánh dấu đang chọn số: \texttt{choosing[i] $\gets$ true;}
+        \item Lấy số lớn nhất hiện có và cộng 1:
+        \[
+        \texttt{number[i] $\gets$ 1 + max(number[1..n]);}
+        \]
+        \item Kết thúc chọn số: \texttt{choosing[i] $\gets$ false;}
+    \end{enumerate}
+    \item Thứ tự ưu tiên được so sánh theo cặp $(\texttt{number[i]}, i)$ theo thứ tự từ điển: 
+    tiến trình có số nhỏ hơn được ưu tiên; nếu số bằng nhau thì tiến trình có chỉ số $i$ nhỏ hơn được ưu tiên.
+\end{itemize}
+
+\subsection*{Thuật toán điều độ}
+
+\noindent\textbf{Biến dùng chung:}
+\begin{itemize}[noitemsep]
+    \item \texttt{boolean choosing[1..n] $\gets$ \{false\};}
+    \item \texttt{int number[1..n] $\gets$ \{0\};}
+\end{itemize}
+
+\begin{algorithm}[H]
+\caption{Thuật toán Bakery cho tiến trình $P_i$}
+\begin{algorithmic}[1]
+\While{true}
+    \State \textbf{Entry:}
+    \State \texttt{choosing[i] $\gets$ true;}
+    \State \texttt{number[i] $\gets$ 1 + max(number[1..n]);}
+    \State \texttt{choosing[i] $\gets$ false;}
+    \For{\texttt{j := 1 to n, j != i}}
+        \While{\texttt{choosing[j]}} \textit{/*busy-wait*/}\Comment{Đợi $P_j$ chọn số xong}
+        \EndWhile
+        \While{\texttt{number[j] != 0} \textbf{and} 
+        $(\texttt{number[j]}, j) < (\texttt{number[i]}, i)$} 
+            \Comment{Đợi nếu $P_j$ có quyền ưu tiên hơn}
+        \EndWhile
+    \EndFor
+    \State \textbf{Đoạn găng của tiến trình $P_i$}
+    \State \textbf{Exit:} \texttt{number[i] $\gets$ 0;}
+    \State \textbf{Phần còn lại của tiến trình $P_i$}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\subsection*{Chứng minh tính hợp lý của điều độ}
+
+\begin{lemma}[Loại trừ lẫn nhau]
+Không thể có hai tiến trình cùng ở trong Đoạn găng.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh}]
+Giả sử ngược lại $P_i$ và $P_k$ cùng ở Đoạn găng. Khi vào Đoạn găng, mỗi tiến trình đã:
+\begin{itemize}[noitemsep]
+    \item Hoàn tất chọn số (\texttt{choosing[*] = false}),
+    \item Vượt qua vòng kiểm tra với mọi tiến trình khác.
+\end{itemize}
+Xét hai cặp $(\texttt{number[i]}, i)$ và $(\texttt{number[k]}, k)$. Theo quy tắc so sánh từ điển, phải có:
+\[
+(\texttt{number[i]}, i) < (\texttt{number[k]}, k) \quad \text{hoặc} \quad
+(\texttt{number[k]}, k) < (\texttt{number[i]}, i)
+\]
+Giả sử $(\texttt{number[i]}, i) < (\texttt{number[k]}, k)$. Khi đó, ở bước kiểm tra, $P_k$ phải đợi cho đến khi \texttt{number[i] = 0}, tức là $P_i$ đã rời Đoạn găng. Mâu thuẫn với giả thiết cả hai cùng ở Đoạn găng. Trường hợp ngược lại tương tự.
+\end{proof}
+
+\begin{lemma}[Tiến triển]
+Nếu tài nguyên găng còn khả năng phục vụ và có tiến trình muốn vào Đoạn găng thì
+ tiến trình đó phải được sử dụng tài nguyên găng.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh}]
+Mọi tiến trình muốn vào đều lấy một số hữu hạn \texttt{number[i]}. Tập các số khác 0 là hữu hạn nên tồn tại tiến trình $P_m$ với cặp $(\texttt{number[m]}, m)$ nhỏ nhất. 
+Trong vòng kiểm tra, với mọi $j \neq m$, điều kiện
+\[
+(\texttt{number[j]}, j) < (\texttt{number[m]}, m)
+\]
+đều sai, nên $P_m$ không phải chờ các tiến trình có ưu tiên thấp hơn. Do đó, $P_m$ sẽ tiến vào Đoạn găng.
+\end{proof}
+
+\begin{lemma}[Chờ đợi hữu hạn]
+Mỗi lần $P_i$ yêu cầu vào Đoạn găng, số lần bị vượt mặt là hữu hạn.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh}]
+Khi $P_i$ chọn xong \texttt{number[i]}, mọi tiến trình đến sau chỉ có thể nhận số lớn hơn hoặc bằng \texttt{number[i]}. Theo quy tắc so sánh:
+\begin{itemize}[noitemsep]
+    \item Các tiến trình có \texttt{number[j]} nhỏ hơn có thể vào trước $P_i$, nhưng số này hữu hạn.
+    \item Các tiến trình đến sau có \texttt{number[j]} lớn hơn do đó không thể chen vào.
+\end{itemize}
+Vì vậy, $P_i$ chỉ phải chờ một lượng hữu hạn tiến trình có số ưu tiên hơn, đảm bảo điều kiện chờ đợi hữu hạn.
+\end{proof}
+
+\subsection*{Kết quả và thảo luận}
+Thiết lập đơn giản với 3 luồng. Luồng \texttt{T1} in ra $x = y + 1$ liên tục, luồng \texttt{T2} cập nhật $y = 2; y = y * 2;$ luồng \texttt{T3} cập nhật $y = 5; y = y + 10;$. Ban đầu y = 1.\\
+\subsection*{Khi không đồng bộ:} 
+\begin{itemize}
+    \item \texttt{T1} có thể đọc $y$ ngay sau lệnh y = 2; của \texttt{T2} hoặc ngay sau lệnh $y = 5$ của \texttt{T3}, trước khi \texttt{T2} kịp thực hiện lệnh $y = y * 2;$ hoặc lệnh $y = y + 10;$ của \texttt{T3}. Do đó các giá trị có thể được in ra là $\{2, 3, 5, 6, 16\}$
+\end{itemize}
+
+\FloatBarrier
+
+\begin{figure}[H]
+\captionsetup{labelformat=empty}
+    \centering
+    \includegraphics[width=0.5\linewidth]{images/LB1.png}
+    \caption{\textbf{Hình 2:} Không đồng bộ}
+    \label{fig:placeholder}
+\end{figure}
+
+\FloatBarrier
+
+\subsection*{Khi đồng bộ:} 
+\begin{itemize}
+    \item Toàn bộ quá trình cập nhật của  \texttt{T2} và \texttt{T3} được bảo vệ trong một vùng găng. Do đó \texttt{T1} phải đợi cho tới khi \texttt{T2} và \texttt{T3} đã hoàn thành. Lúc này $y = 4$ và $y = 15$ nên các giá trị có thể được in ra là $ \{2, 5, 16 \}$. 
+    \item Số đầu tiên được in ra sẽ phụ thuộc vào luồng nào sẽ được thực hiện đầu tiên.
+\end{itemize}
+
+\begin{figure}[H]
+\captionsetup{labelformat=empty}
+  \centering
+  \begin{subfigure}[t]
+  {0.32\textwidth}\centering
+    \includegraphics[width=\linewidth]{images/LB2.png}
+    \caption{\textbf{Hình 2.1:} \texttt{T1} thực hiện trước}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \includegraphics[width=\linewidth]{images/LB3.png}
+    \caption{\textbf{Hình 2.2:} \texttt{T2} thực hiện trước}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\textwidth}\centering
+    \includegraphics[width=\linewidth]{images/LB4.png}
+    \caption{\textbf{Hình 2.3:} \texttt{T3} thực hiện trước}
+  \end{subfigure}
+  \label{fig:compare}
+\end{figure}
+
+
+
+\FloatBarrier
+
+% \begin{itemize}[noitemsep]
+%     \item Không xuất hiện giá trị sai lệch do truy cập đồng thời (thỏa Mutual Exclusion).
+%     \item Không có luồng nào bị “bỏ đói”: mọi luồng yêu cầu Đoạn găng đều được phục vụ tuần tự theo thứ tự vé (thỏa Bounded Waiting).
+%     \item So với Peterson (chỉ cho 2 tiến trình), Bakery mở rộng cho $n$ tiến trình mà vẫn chỉ dùng đọc/ghi biến chia sẻ, phù hợp vai trò “mẫu chuẩn” cho các giải pháp phần mềm.
+% \end{itemize}
+
+% \subsection{Cigarette Smokers Problem (Người hút thuốc)}
+% % TODO
+% \section*{Bài toán Người hút thuốc (Cigarette Smokers Problem)}
+
+% \textbf{Nguồn gốc:}  
+% Bài toán được Donald E. Knuth nêu ra và được trình bày trong giáo trình \textbf{Operating Systems} của \textbf{A. Silberschatz} và \textbf{William Stallings}.  
+% Đây là một ví dụ kinh điển về \textbf{đồng bộ hoá nhiều tiến trình}, minh họa cách sử dụng cơ chế chờ có điều kiện (\textit{condition synchronization}) và semaphore để điều phối hoạt động giữa các tiến trình có quan hệ ràng buộc.
+
+
+
+% \subsection*{ Mô tả bài toán}
+
+% Có ba người hút thuốc ngồi quanh một chiếc bàn. Để hút thuốc, mỗi người cần ba thành phần:
+% \textbf{thuốc lá (tobacco)}, \textbf{giấy (paper)}, và \textbf{diêm (matches)}.  
+% Mỗi người hút thuốc chỉ có vô hạn \textbf{một loại nguyên liệu}:
+% \begin{itemize}
+%     \item Người hút thuốc A có vô hạn \textit{thuốc lá (tobacco)}.
+%     \item Người hút thuốc B có vô hạn \textit{giấy (paper)}.
+%     \item Người hút thuốc C có vô hạn \textit{diêm (matches)}.
+% \end{itemize}
+
+% Ngoài ra, có một \textbf{người cung cấp (Agent)} ngồi giữa bàn, người này liên tục chọn ngẫu nhiên \textbf{2 trong 3 nguyên liệu} và đặt chúng lên bàn.  
+% Sau đó, Agent chờ đến khi người hút thuốc có nguyên liệu còn lại lấy được chúng, cuốn thuốc và hút xong, rồi mới tiếp tục.
+
+% \textbf{Ví dụ:}  
+% \begin{itemize}
+%     \item Nếu Agent đặt \textit{giấy} và \textit{diêm}, người có \textit{thuốc lá} sẽ hút.
+%     \item Khi người hút thuốc đó hút xong, họ báo hiệu để Agent đặt cặp nguyên liệu mới.
+% \end{itemize}
+
+
+
+% \subsection*{Mục tiêu và ràng buộc đồng bộ}
+
+% \begin{itemize}
+%     \item Chỉ một người hút thuốc có thể hút tại một thời điểm.
+%     \item Agent không được đặt nguyên liệu mới cho đến khi người hút thuốc hiện tại hoàn tất.
+%     \item Mỗi người hút thuốc chỉ được hoạt động khi đủ 3 nguyên liệu trên bàn.
+% \end{itemize}
+
+
+
+% \subsection*{Phân tích tiến trình trong hệ thống}
+
+% \begin{enumerate}[label=(\alph*)]
+%     \item \textbf{Agent (Người cung cấp):} chọn ngẫu nhiên 2 nguyên liệu và đặt lên bàn.
+%     \item \textbf{Smokers (Người hút thuốc):} có 3 tiến trình tương ứng với 3 loại nguyên liệu riêng biệt.
+%     \item \textbf{Tuỳ chọn} (\textbf{Giám sát viên):} dùng để kiểm tra trạng thái bàn (trống / có nguyên liệu), không bắt buộc.
+% \end{enumerate}
+
+
+
+% \subsection*{Mô hình hoạt động tổng quát}
+
+% \begin{center}
+% \begin{tabular}{lcl}
+% \textbf{Agent} & $\longrightarrow$ & Đặt 2 nguyên liệu ngẫu nhiên lên bàn \\
+%                &                    & ↓ \\
+% \textbf{Smoker phù hợp} & $\longrightarrow$ & Lấy nguyên liệu còn thiếu, cuốn và hút thuốc \\
+%                &                    & ↓ \\
+% \textbf{Smoker báo hiệu} & $\longrightarrow$ & Cho phép Agent tiếp tục vòng mới
+% \end{tabular}
+% \end{center}
+
+
+
+% \subsection*{Đề xuất giải pháp bằng Semaphore}
+
+% \begin{table}[H]
+% \centering
+% \caption{Các Semaphore trong bài toán Người hút thuốc}
+% \label{tab:smoker-semaphores}
+% \begin{tabular}{l c l}
+% \toprule
+% \textbf{Tên} & \textbf{Giá trị khởi tạo} & \textbf{Chức năng / Mục đích} \\
+% \midrule
+% \texttt{agentSem} & 1 & Đảm bảo Agent chỉ hoạt động khi bàn trống. \\
+% \texttt{tobaccoSem} & 0 & Báo hiệu cho người hút thuốc có thuốc lá khi 2 nguyên liệu còn lại có sẵn. \\
+% \texttt{paperSem} & 0 & Báo hiệu cho người hút thuốc có giấy. \\
+% \texttt{matchSem} & 0 & Báo hiệu cho người hút thuốc có diêm. \\
+% \texttt{doneSem} & 0 & Báo hiệu người hút thuốc đã hoàn tất một lượt. \\
+% \texttt{mutex} & 1 & Bảo vệ truy cập vùng nhớ dùng chung (bàn, biến trạng thái). \\
+% \bottomrule
+% \end{tabular}
+% \end{table}
+
+
+
+% \subsection*{Thuật toán điều độ}
+
+% \begin{algorithm}[H]
+% \caption{Tiến trình Người cung cấp (Agent) }
+% \begin{algorithmic}[1]
+% \While{\texttt{true}} \Comment{Lặp vô hạn — Agent luôn hoạt động liên tục}
+%     \State \texttt{wait(agentSem)} \Comment{Đảm bảo chỉ hoạt động khi bàn trống}
+%     \State \texttt{(item1, item2) = random(2 ingredients)} \Comment{Chọn ngẫu nhiên nguyên liệu}
+    
+%     \If{(item1, item2) == (paper, match)} 
+%         \State \texttt{signal(tobaccoSem)} \Comment{Báo hiệu cho người có thuốc lá khi thiếu nguyên liệu}
+%     \ElsIf{(item1, item2) == (tobacco, match)}
+%         \State \texttt{signal(paperSem)} \Comment{Báo hiệu cho người có giấy (thiếu 2 thành phần này)}
+%     \ElsIf{(item1, item2) == (tobacco, paper)}
+%         \State \texttt{signal(matchSem)} \Comment{Báo hiệu cho người có diêm (thiếu 2 thành phần này)}
+%     \EndIf
+    
+%     \State \texttt{wait(doneSem)} \Comment{Đợi người hút thuốc báo hiệu rằng đã hút xong}
+% \EndWhile
+% \end{algorithmic}
+% \end{algorithm}
+
+
+% \begin{algorithm}[H]
+% \caption{Tiến trình Người hút thuốc có \texttt{tobacco} (Smoker with Tobacco) }
+% \begin{algorithmic}[1]
+% \While{\texttt{true}} \Comment{Tiến trình lặp vô hạn — người hút thuốc luôn sẵn sàng}
+%     \State \texttt{wait(tobaccoSem)} \Comment{Chờ tín hiệu từ Agent khi có (giấy, diêm) trên bàn}
+%     \State \texttt{makeCigarette()} \Comment{Lấy nguyên liệu, cuốn điếu thuốc hoàn chỉnh}
+%     \State \texttt{smoke()} \Comment{Mô phỏng hành động hút thuốc — chiếm dụng CPU một thời gian}
+%     \State \texttt{signal(doneSem)} \Comment{Báo hiệu cho Agent biết rằng đã hút xong}
+%     \State \texttt{signal(agentSem)} \Comment{Cho phép Agent tiếp tục đặt nguyên liệu cho vòng kế tiếp}
+% \EndWhile
+% \end{algorithmic}
+% \end{algorithm}
+
+
+% \begin{algorithm}[H]
+% \caption{Tiến trình Người hút thuốc có \texttt{paper} (Smoker with Paper)}
+% \begin{algorithmic}[1]
+% \While{\texttt{true}} \Comment{Vòng lặp vô hạn — người hút thuốc luôn trong trạng thái sẵn sàng}
+%     \State \texttt{wait(paperSem)} \Comment{Đợi tín hiệu từ Agent khi trên bàn có (thuốc lá, diêm)}
+%     \State \texttt{makeCigarette()} \Comment{Kết hợp giấy, thuốc lá và diêm để cuốn điếu thuốc}
+%     \State \texttt{smoke()} \Comment{Mô phỏng hành động hút thuốc — tạm chiếm tài nguyên CPU}
+%     \State \texttt{signal(doneSem)} \Comment{Báo hiệu rằng người hút đã hoàn tất quá trình hút}
+%     \State \texttt{signal(agentSem)} \Comment{Cho phép Agent tiếp tục đặt nguyên liệu mới lên bàn}
+% \EndWhile
+% \end{algorithmic}
+% \end{algorithm}
+
+
+% \begin{algorithm}[H]
+% \caption{Tiến trình Người hút thuốc có \texttt{match} (Smoker with Match) }
+% \begin{algorithmic}[1]
+% \While{\texttt{true}} \Comment{Vòng lặp vô hạn — người hút thuốc luôn chờ nguyên liệu}
+%     \State \texttt{wait(matchSem)} \Comment{Đợi tín hiệu từ Agent khi trên bàn có (thuốc lá, giấy)}
+%     \State \texttt{makeCigarette()} \Comment{khi đủ nguyên liệu thì cuốn điếu thuốc hoàn chỉnh}
+%     \State \texttt{smoke()} \Comment{hành động hút thuốc — tạm chiếm CPU trong một khoảng thời gian}
+%     \State \texttt{signal(doneSem)} \Comment{Báo cho Agent biết rằng người hút đã hút xong, bàn trống}
+%     \State \texttt{signal(agentSem)} \Comment{Cho phép Agent đặt nguyên liệu mới cho vòng lặp kế tiếp}
+% \EndWhile
+% \end{algorithmic}
+% \end{algorithm}
+
+
+
+
+% \subsection*{Chứng minh tính hợp lý của điều độ}
+
+% \begin{lemma}[Mutual Exclusion]
+% Tại mọi thời điểm, chỉ một người hút thuốc được phép hút.
+% \end{lemma}
+% \begin{proof}[\textbf{Chứng minh. }]
+% Trong mỗi vòng lặp, Agent chỉ phát tín hiệu \texttt{signal()} cho đúng một semaphore tương ứng với người hút thuốc phù hợp.  
+% Các semaphore khác vẫn ở trạng thái chờ, do đó chỉ một tiến trình được đánh thức.
+% \end{proof}
+
+% \begin{lemma}[Progress]
+% Không xảy ra trạng thái chờ vô hạn.
+% \end{lemma}
+% \begin{proof}[\textbf{Chứng minh. }]
+% Agent luôn chờ trên \texttt{doneSem} sau khi đánh thức người hút thuốc.  
+% Người hút thuốc sau khi hoàn thành luôn thực hiện \texttt{signal(doneSem)}, giúp vòng lặp tiếp tục.  
+% Không tồn tại tình huống tất cả các tiến trình cùng chờ.
+% \end{proof}
+
+% \begin{lemma}[Bounded Waiting]
+% Mỗi người hút thuốc đều có cơ hội hút trong thời gian hữu hạn.
+% \end{lemma}
+% \begin{proof}[\textbf{Chứng minh. }]
+% Do Agent chọn ngẫu nhiên 2 nguyên liệu trong mỗi vòng, mỗi người hút thuốc đều có xác suất hữu hạn để được đánh thức.  
+% Hệ thống tuần hoàn đảm bảo không có tiến trình nào bị đói tài nguyên (\textit{starvation}).
+% \end{proof}
+
+% comment nhỡ cop nhầm thì sửa :))
+
+\section{Có sự hỗ trợ phần cứng}
+
+\subsection{Cigarette Smokers Problem (Bài toán người hút thuốc)}
+% TODO
+
+\textbf{Nguồn gốc:}  
+Bài toán được Donald E. Knuth nêu ra và được trình bày trong giáo trình \textbf{Operating Systems} của \textbf{A. Silberschatz} và \textbf{William Stallings}.  
+Đây là một ví dụ kinh điển về \textbf{đồng bộ hoá nhiều tiến trình}, minh họa cách sử dụng cơ chế chờ có điều kiện (\textit{condition synchronization}) và semaphore để điều phối hoạt động giữa các tiến trình có quan hệ ràng buộc.
+
+
+
+\subsection*{ Mô tả bài toán}
+
+Có ba người hút thuốc ngồi quanh một chiếc bàn. Để hút thuốc, mỗi người cần ba thành phần:
+\textbf{thuốc lá (tobacco)}, \textbf{giấy (paper)}, và \textbf{diêm (matches)}.  
+Mỗi người hút thuốc chỉ có vô hạn \textbf{một loại nguyên liệu}:
+\begin{itemize}
+    \item Người hút thuốc A có vô hạn \textit{thuốc lá (tobacco)}.
+    \item Người hút thuốc B có vô hạn \textit{giấy (paper)}.
+    \item Người hút thuốc C có vô hạn \textit{diêm (matches)}.
+\end{itemize}
+
+Ngoài ra, có một \textbf{người cung cấp (Agent)} ngồi giữa bàn, người này liên tục chọn ngẫu nhiên \textbf{2 trong 3 nguyên liệu} và đặt chúng lên bàn.  
+Sau đó, Agent chờ đến khi người hút thuốc có nguyên liệu còn lại lấy được chúng, cuốn thuốc và hút xong, rồi mới tiếp tục.
+
+\textbf{Ví dụ:}  
+\begin{itemize}
+    \item Nếu Agent đặt \textit{giấy} và \textit{diêm}, người có \textit{thuốc lá} sẽ hút.
+    \item Khi người hút thuốc đó hút xong, họ báo hiệu để Agent đặt cặp nguyên liệu mới.
+\end{itemize}
+
+
+
+\subsection*{Nguyên tắc}
+
+\begin{itemize}
+    \item Chỉ một người hút thuốc có thể hút tại một thời điểm.
+    \item Agent không được đặt nguyên liệu mới cho đến khi người hút thuốc hiện tại hoàn tất.
+    \item Mỗi người hút thuốc chỉ được hoạt động khi đủ 3 nguyên liệu trên bàn.
+\end{itemize}
+
+
+
+\subsection*{Phân tích }
+
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{Agent (Người cung cấp):} chọn ngẫu nhiên 2 nguyên liệu và đặt lên bàn.
+    \item \textbf{Smokers (Người hút thuốc):} có 3 tiến trình tương ứng với 3 loại nguyên liệu riêng biệt.
+    \item \textbf{Tuỳ chọn} (\textbf{Giám sát viên):} dùng để kiểm tra trạng thái bàn (trống / có nguyên liệu), không bắt buộc.
+\end{enumerate}
+
+
+
+\textbf{Mô hình hoạt động tổng quát}
+
+\begin{center}
+\begin{tabular}{lcl}
+\textbf{Agent} & $\longrightarrow$ & Đặt 2 nguyên liệu ngẫu nhiên lên bàn \\
+               &                    & ↓ \\
+\textbf{Smoker phù hợp} & $\longrightarrow$ & Lấy nguyên liệu còn thiếu, cuốn và hút thuốc \\
+               &                    & ↓ \\
+\textbf{Smoker báo hiệu} & $\longrightarrow$ & Cho phép Agent tiếp tục vòng mới
+\end{tabular}
+\end{center}
+
+
+
+\textbf{Đề xuất giải pháp bằng Semaphore}
+
+\begin{table}[H]
+\centering
+\caption{Các Semaphore trong bài toán Người hút thuốc}
+\label{tab:smoker-semaphores}
+\begin{tabularx}{\linewidth}{@{}l c X@{}}
+\toprule
+\textbf{Tên} & \textbf{Giá trị khởi tạo} & \textbf{Chức năng / Mục đích} \\
+\midrule
+\texttt{agentSem}   & 1 & Đảm bảo Agent chỉ hoạt động khi bàn trống. \\
+\texttt{tobaccoSem} & 0 & Báo hiệu cho người hút thuốc có thuốc lá khi 2 nguyên liệu còn lại có sẵn. \\
+\texttt{paperSem}   & 0 & Báo hiệu cho người hút thuốc có giấy. \\
+\texttt{matchSem}   & 0 & Báo hiệu cho người hút thuốc có diêm. \\
+\texttt{doneSem}    & 0 & Báo hiệu người hút thuốc đã hoàn tất một lượt. \\
+\texttt{mutex}      & 1 & Bảo vệ truy cập vùng nhớ dùng chung (bàn, biến trạng thái). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+
+
+\subsection*{Thuật toán điều độ}
+
+\begin{algorithm}[H]
+\caption{Tiến trình Người cung cấp (Agent) }
+\begin{algorithmic}[1]
+\While{\texttt{true}} \Comment{Lặp vô hạn — Agent luôn hoạt động liên tục}
+    \State \texttt{wait(agentSem)} \Comment{Đảm bảo chỉ hoạt động khi bàn trống}
+    \State \texttt{(item1, item2) = random(2 ingredients)} \Comment{Chọn ngẫu nhiên nguyên liệu}
+    
+    \If{(item1, item2) == (paper, match)} 
+        \State \texttt{signal(tobaccoSem)} \Comment{Báo hiệu cho người có thuốc lá khi thiếu nguyên liệu}
+    \ElsIf{(item1, item2) == (tobacco, match)}
+        \State \texttt{signal(paperSem)} \Comment{Báo hiệu cho người có giấy (thiếu 2 thành phần này)}
+    \ElsIf{(item1, item2) == (tobacco, paper)}
+        \State \texttt{signal(matchSem)} \Comment{Báo hiệu cho người có diêm (thiếu 2 thành phần này)}
+    \EndIf
+    
+    \State \texttt{wait(doneSem)} \Comment{Đợi người hút thuốc báo hiệu rằng đã hút xong}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+
+\begin{algorithm}[H]
+\caption{Tiến trình Người hút thuốc có \texttt{tobacco} (Smoker with Tobacco) }
+\begin{algorithmic}[1]
+\While{\texttt{true}} \Comment{Tiến trình lặp vô hạn — người hút thuốc luôn sẵn sàng}
+    \State \texttt{wait(tobaccoSem)} \Comment{Chờ tín hiệu từ Agent khi có (giấy, diêm) trên bàn}
+    \State \texttt{makeCigarette()} \Comment{Lấy nguyên liệu, cuốn điếu thuốc hoàn chỉnh}
+    \State \texttt{smoke()} \Comment{Mô phỏng hành động hút thuốc — chiếm dụng CPU một thời gian}
+    \State \texttt{signal(doneSem)} \Comment{Báo hiệu cho Agent biết rằng đã hút xong}
+    \State \texttt{signal(agentSem)} \Comment{Cho phép Agent tiếp tục đặt nguyên liệu cho vòng kế tiếp}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+
+\begin{algorithm}[H]
+\caption{Tiến trình Người hút thuốc có \texttt{paper} (Smoker with Paper)}
+\begin{algorithmic}[1]
+\While{\texttt{true}} \Comment{Vòng lặp vô hạn — người hút thuốc luôn trong trạng thái sẵn sàng}
+    \State \texttt{wait(paperSem)} \Comment{Đợi tín hiệu từ Agent khi trên bàn có (thuốc lá, diêm)}
+    \State \texttt{makeCigarette()} \Comment{Kết hợp giấy, thuốc lá và diêm để cuốn điếu thuốc}
+    \State \texttt{smoke()} \Comment{Mô phỏng hành động hút thuốc — tạm chiếm tài nguyên CPU}
+    \State \texttt{signal(doneSem)} \Comment{Báo hiệu rằng người hút đã hoàn tất quá trình hút}
+    \State \texttt{signal(agentSem)} \Comment{Cho phép Agent tiếp tục đặt nguyên liệu mới lên bàn}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+
+\begin{algorithm}[H]
+\caption{Tiến trình Người hút thuốc có \texttt{match} (Smoker with Match) }
+\begin{algorithmic}[1]
+\While{\texttt{true}} \Comment{Vòng lặp vô hạn — người hút thuốc luôn chờ nguyên liệu}
+    \State \texttt{wait(matchSem)} \Comment{Đợi tín hiệu từ Agent khi trên bàn có (thuốc lá, giấy)}
+    \State \texttt{makeCigarette()} \Comment{khi đủ nguyên liệu thì cuốn điếu thuốc hoàn chỉnh}
+    \State \texttt{smoke()} \Comment{hành động hút thuốc — tạm chiếm CPU trong một khoảng thời gian}
+    \State \texttt{signal(doneSem)} \Comment{Báo cho Agent biết rằng người hút đã hút xong, bàn trống}
+    \State \texttt{signal(agentSem)} \Comment{Cho phép Agent đặt nguyên liệu mới cho vòng lặp kế tiếp}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+\subsection*{Chứng minh tính hợp lý của điều độ}
+
+\begin{lemma}[Loại trừ lẫn nhau]
+Tại mọi thời điểm, chỉ một người hút thuốc được phép hút.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh. }]
+Trong mỗi vòng lặp, Agent chỉ phát tín hiệu \texttt{signal()} cho đúng một semaphore tương ứng với người hút thuốc phù hợp.  
+Các semaphore khác vẫn ở trạng thái chờ, do đó chỉ một tiến trình được đánh thức.
+\end{proof}
+
+\begin{lemma}[Tiến triển]
+Khi Agent đặt đúng 2 món nguyên liệu lên bàn, thì người hút thuốc sở hữu món thứ 3 tương ứng PHẢI được đánh thức để hút thuốc.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh. }]
+Khi Agent cung cấp nguyên liệu (ví dụ: paper, match), Agent gọi lệnh signal(tobaccoSem) (Dòng 5, Algo 3). Lệnh này nhắm chính xác và duy nhất vào Smoker có tobacco. Smoker có tobacco đang chờ tại wait(tobaccoSem) (Dòng 2, Algo 4) sẽ nhận tín hiệu và được đánh thức ngay lập tức. Các Smoker khác vẫn tiếp tục ngủ.
+\end{proof}
+
+\begin{lemma}[Chờ đợi hữu hạn]
+Mỗi người hút thuốc không bị chờ lâu vô hạn.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh. }]
+Do Agent chọn ngẫu nhiên 2 nguyên liệu trong mỗi vòng, mỗi người hút thuốc đều có xác suất hữu hạn để được đánh thức.  
+Hệ thống tuần hoàn đảm bảo không có tiến trình nào bị đói tài nguyên.
+\end{proof}
+
+
+\subsection{The Roller Coaster Problem (Bài toán Tàu lượn siêu tốc)} % TODO
+
+\textbf{Nguồn gốc:}
+Bài toán Tàu lượn siêu tốc (The Roller Coaster Problem) là một bài toán cổ điển trong lập trình đồng thời và hệ điều hành, được đề xuất bởi \textbf{Max Hailperin} cho giáo trình \textit{Operating Systems and Middleware}. Bài toán này được sử dụng để minh họa việc điều phối hoạt động phức tạp giữa hai nhóm tiến trình (Luồng): nhóm \textbf{Toa tàu (Car)} và nhóm \textbf{Hành khách (Passenger)}, sử dụng các cơ chế đồng bộ hóa như Semaphore và Barrier.
+
+\subsection*{ Mô tả bài toán}
+
+Mô hình bao gồm hai loại tiến trình hoạt động theo chu kỳ:
+\begin{enumerate}[label=(\alph*)]
+\item \textbf{Toa tàu (Car, 1 tiến trình):} Chịu trách nhiệm chở hành khách.
+\item \textbf{Hành khách (Passengers, $N$ tiến trình):} Muốn đi tàu lượn.
+\end{enumerate}
+Toa tàu có sức chứa tối đa là $C$ hành khách ($C$ là hằng số, $C < N$). Các yêu cầu về hoạt động của hệ thống là:
+
+\begin{enumerate}[label=(\alph*)]
+\item \textbf{Đón khách:} Toa tàu phải đợi cho đến khi có \textbf{đủ $C$ hành khách} lên tàu mới có thể bắt đầu chuyến đi.
+\item \textbf{Hành trình:} Khi toa tàu đang chạy, hành khách không thể lên hay xuống.
+\item \textbf{Trả khách:} Sau khi chuyến đi kết thúc, toa tàu phải đợi cho đến khi \textbf{tất cả $C$ hành khách} đã xuống hết trước khi quay lại ga để đón chuyến tiếp theo.
+\item \textbf{Hành khách:} Hành khách phải đợi cho đến khi có chỗ trên toa tàu để lên, và phải đợi cho đến khi chuyến đi kết thúc mới được xuống.
+\end{enumerate}
+
+\subsection*{Đề xuất giải quyết bằng kỹ thuật Semaphore}
+
+Ta định nghĩa các biến đếm và semaphore sau:
+
+\begin{table}[H]
+\centering
+\caption{Các biến và Semaphore cho Bài toán Tàu lượn siêu tốc}
+\label{tab:rollercoaster-semaphores}
+\begin{tabular}{l c l}
+\toprule
+\textbf{Tên} & \textbf{Khởi tạo} & \textbf{Mục đích} \\
+\midrule
+\texttt{mutex} & 1 & Bảo vệ biến đếm chung \texttt{passengersOnBoard}. \\
+\texttt{boardQueue} & 0 & Toa tàu chờ ở đây (đủ hành khách).\\
+\texttt{unboardQueue} & 0 & Hành khách chờ ở đây (kết thúc chuyến đi). \\
+\texttt{allAboard} & 0 & Rào cản để C hành khách chờ toa tàu chạy\\  & & (Broadcast Signal). \\
+\texttt{allUnboard} & 0 & Rào cản cho toa tàu chờ C hành khách xuống hết\\ & &  (Final Signal).\\
+\texttt{passengersOnBoard} & 0 & Biến đếm số hành khách đã lên tàu. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{Thuật toán điều độ}
+
+\begin{algorithm}[H]
+\caption{Tiến trình Toa tàu (\texttt{CarThread})}
+\begin{algorithmic}[1]
+\While{\texttt{true}}
+\State \texttt{wait(boardQueue)} \Comment{Chờ hành khách cuối cùng đánh thức}
+\State \texttt{loadPassengers()} \Comment{Hành khách đã lên, tàu chuẩn bị}
+
+\State \texttt{// Tàu báo hiệu cho $C$ khách lên tàu đi tiếp (Rào cản 1)}
+\For{\texttt{i} $\gets 1$ \textbf{to} C}
+\State \texttt{signal(allAboard)} 
+\EndFor
+
+\State \texttt{runRide()} \Comment{Tàu chạy chuyến đi}
+
+\State \texttt{// Tàu dừng, báo hiệu cho $C$ khách được xuống}
+\For{\texttt{i} $\gets 1$ \textbf{to} C}
+\State \texttt{signal(unboardQueue)} 
+\EndFor
+
+\State \texttt{wait(allUnboard)} \Comment{Chờ cho khách thứ $C$ xác nhận xuống hết}
+\State \texttt{unloadPassengers()} \Comment{Khách đã xuống hết, tàu sẵn sàng đón khách mới}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Tiến trình Hành khách (\texttt{PassengerThread}) - $N$ tiến trình (Đã hiệu chỉnh)}
+\begin{algorithmic}[1]
+\While{\texttt{true}}
+\State \texttt{wait(mutex)}
+\State \texttt{// 1. Lên tàu (Vùng găng)}
+\State \texttt{passengersOnBoard} $\gets$ \texttt{passengersOnBoard} + 1
+\If{\texttt{passengersOnBoard} == C}
+\State \texttt{signal(boardQueue)} \Comment{Khách thứ $C$ đánh thức tàu $\to$ Tàu khởi hành}
+\EndIf
+\State \texttt{signal(mutex)}
+
+\State \texttt{wait(allAboard)} \Comment{Chờ tín hiệu từ tàu báo hiệu đã đủ khách}
+
+\State \texttt{ride()} \Comment{Tham gia chuyến đi}
+
+\State \texttt{// 2. Xuống tàu}
+\State \texttt{wait(unboardQueue)} \Comment{Chờ tàu dừng để được phép xuống}
+\State \texttt{getOff()} \Comment{Hành động xuống tàu}
+
+\State \texttt{// 3. Báo hiệu xuống xong (Vùng găng)}
+\State \texttt{wait(mutex)}
+\State \texttt{passengersOnBoard} $\gets$ \texttt{passengersOnBoard} - 1
+\If{\texttt{passengersOnBoard} == 0}
+\State \texttt{signal(allUnboard)} \Comment{Khách cuối cùng báo hiệu cho tàu về ga}
+\EndIf
+\State \texttt{signal(mutex)}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\subsection*{Chứng minh tính hợp lý của điều độ}
+
+\begin{lemma}[Loại trừ lẫn nhau]
+Biến trạng thái chung $\texttt{passengersOnBoard}$ luôn được truy cập một cách độc quyền.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh}]
+Trong các tiến trình, việc truy cập và thay đổi biến \texttt{passengersOnBoard} luôn được đặt trong vùng loại trừ hỗ tương được bảo vệ bởi $\texttt{mutex}$. Điều này ngăn ngừa tình trạng tranh chấp (race condition).
+\end{proof}
+
+\begin{lemma}[Tiến triển]
+Toa tàu chắc chắn sẽ khởi hành ngay khi điều kiện về số lượng hành khách được thỏa mãn, và hành khách chắc chắn được xuống khi tàu dừng.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh:}]
+
+\textbf{Giai đoạn Đón khách (Loading):}
+    Giả sử Toa tàu đang chờ tại \texttt{wait(boardQueue)} và có đủ $C$ hành khách muốn đi.
+    Mỗi hành khách khi đến đều thực hiện tăng biến đếm \texttt{passengersOnBoard} trong vùng độc quyền (\texttt{mutex}).
+    Hành khách thứ $C$ chắc chắn sẽ thỏa mãn điều kiện \texttt{passengersOnBoard == C} và thực hiện lệnh \texttt{signal(boardQueue)}.
+    Không xảy ra trường hợp tàu vẫn còn có chỗ mà hành khách không được lên tàu.
+
+\textbf{Giai đoạn Trả khách (Unloading):}
+    Sau khi tàu chạy xong, Toa tàu phát $C$ tín hiệu \texttt{signal(unboardQueue)}, mỗi 1 hành khách xuống tàu sẽ sử dụng đèn báo mutex, biến passengerOnBoard được trừ đi 1. Điều này đảm bảo tất cả $C$ hành khách đang chờ xuống tàu đều được đánh thức để thực hiện \texttt{getOff()}.
+    Hành khách cuối cùng rời đi (khi \texttt{passengersOnBoard == 0}) sẽ gửi tín hiệu \texttt{signal(allUnboard)}, cho phép Toa tàu quay lại trạng thái đón khách mới.
+
+Do đó, chu trình hoạt động của hệ thống là liên tục và phụ thuộc chặt chẽ vào số lượng tiến trình tham gia, thỏa mãn yêu cầu Tiến triển.
+\end{proof}
+
+\begin{lemma}[Chờ đợi hữu hạn]
+Mỗi hành khách đều có thể hoàn thành chuyến đi trong thời gian hữu hạn.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh}]
+Bởi vì số lượng hành khách là hữu hạn và toa tàu liên tục hoạt động theo chu kỳ, mọi hành khách đã lên tàu đều được giải phóng bằng $\texttt{signal(unboardQueue)}$. Cơ chế đếm \texttt{passengersOnBoard} đảm bảo đúng $C$ hành khách tham gia và $C$ hành khách rời đi, từ đó ngăn chặn tình trạng đói tài nguyên cho các tiến trình Hành khách.
+\end{proof}
+
+\subsection{Santa Claus (Bài toán Ông già Noel)}
+\label{subsec:santa-claus}
+
+\textbf{Nguồn gốc:} {Bài toán Ông già Noel (Santa Claus Problem)} xuất phát từ cuốn \textbf{Operating Systems của William Stallings} , nhưng ông cho rằng nó được tạo ra bởi \textbf{John Trono} của St. Michael's College ở Vermont. Đây là một bài toán cổ điển về đồng bộ hoá được đề xuất nhằm minh họa các vấn đề điều độ phức tạp giữa nhiều nhóm tiến trình có ưu tiên khác nhau. \\
+\subsection*{ Mô tả bài toán}Ông già Noel (\textbf{Santa}) ngủ trong cửa hàng của mình ở Bắc Cực và chỉ có thể được đánh thức bởi 9 con tuần lộc trở về từ kỳ nghỉ của chúng ở Nam Thái Bình Dương, hoặc 3 chú lùn gặp khó khăn khi làm đồ chơi; để cho ông Santa có thể được ngủ một chút, các chú lùn chỉ được đánh thức khi có đủ ba chú lùn gặp vấn đề. Khi ba chú lùn đang giải quyết vấn đề của họ, bất kỳ chú lùn khác muốn thăm ông Santa đều phải đợi cho đến khi ba chú lùn đó trở về. Nếu ông Santa thức dậy và thấy ba chú lùn đang đợi ở cửa hàng của mình, cùng với con tuần lộc cuối cùng trở về từ 
+vùng nhiệt đới, ông Santa đã quyết định rằng các chú lùn có thể đợi cho đến sau ngày Giáng sinh,vì việc chuẩn bị chiếc xe trượt của ông quan trọng hơn. (Giả định rằng các con tuần lộc không muốn rời khỏi vùng nhiệt đới, và do đó chúng ở lại đó cho đến phút cuối cùng.) Con tuần lộc cuối cùng đến phải tìm ông Santa trong khi những con khác đợi trong một căn nhà ấm. \\
+
+\textbf{Ông già Noel (\textbf{Santa}, 1 tiến trình)} là tài nguyên chung, phải ngủ cho đến khi được đánh thức bởi một trong hai nhóm sau:
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{Tuần lộc (Reindeer, $9$ tiến trình):} Khi cả $9$ tuần lộc đã về sau kỳ nghỉ.
+    \item \textbf{Chú lùn (Elf, $10$ tiến trình):} Khi $3$ chú lùn tập hợp lại để xin tư vấn.
+    \item \textbf{Yêu cầu Ưu tiên:} Santa phải \textbf{luôn ưu tiên} phục vụ nhóm Tuần lộc nếu cả hai nhóm cùng chờ. Santa không tham gia vào quá trình tập hợp nhóm (tự đồng bộ hoá nhóm).
+\end{enumerate}
+
+\textbf{Yêu cầu về thuật toán đồng bộ:}
+
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{Đồng bộ hóa Tuần lộc:} Sau khi con tuần lộc thứ chín (thành viên cuối cùng) đến và đánh thức Santa, tiến trình Santa phải gọi hàm \texttt{prepareSleigh()}. Ngay sau đó, tất cả chín con tuần lộc phải đồng thời thực hiện hàm \texttt{getHitched()} trước khi chuyển sang trạng thái nghỉ tiếp.
+    \item \textbf{Đồng bộ hóa Chú lùn:} Sau khi ba chú lùn (thành viên thứ ba) tập hợp và đánh thức Santa, tiến trình Santa phải gọi hàm \texttt{helpElves()}. Đồng thời, cả ba chú lùn đó phải gọi hàm \texttt{getHelp()}.
+    \item \textbf{Loại trừ Nhóm (Elves Group Exclusion):} Tất cả ba chú lùn được phục vụ phải gọi hàm \texttt{getHelp()} và rời khỏi khu vực chờ trước khi bất kỳ chú lùn nào khác được phép vào (tức là tăng biến đếm số lượng chú lùn đang chờ - \texttt{elfCount} - cho nhóm tiếp theo). Điều này đảm bảo Santa chỉ giải quyết các vấn đề theo từng nhóm 3 người.
+    \item \textbf{Cơ chế Đếm và Rào cản:} Cần cơ chế đếm số lượng Tuần lộc (\texttt{reindeerCount}) hoặc Chú lùn (\texttt{elfCount}) đã sẵn sàng.
+    \begin{itemize}
+        \item Tuần lộc cần một \textbf{rào cản (barrier)} để đảm bảo rằng \textbf{9 con} đều đã đến trước khi tiến trình của chúng đi tiếp và đánh thức Santa.
+        \item Tương tự, Chú lùn cần một \textbf{rào cản} chỉ cho phép \textbf{3 chú lùn} tiếp theo đi vào và đánh thức Santa.
+    \end{itemize}
+    \item \textbf{Cơ chế Báo hiệu (Signaling):} Cần cơ chế báo hiệu (\texttt{santaSem}) để Santa biết rằng một nhóm (Tuần lộc thứ 9 hoặc Chú lùn thứ 3) đã hoàn chỉnh và sẵn sàng được phục vụ.
+\end{enumerate}
+\subsection*{Đề xuất giải quyết bằng kỹ thuật Semaphore}
+Để giải quyết bài toán bằng \textbf{Semaphore}, ta định nghĩa các biến đếm và semaphore sau:
+
+% Trong preamble nhớ có:
+% \usepackage{tabularx}
+
+\begin{table}[H]
+    \centering
+    \caption{Các biến và Semaphore cho Bài toán Santa Claus}
+    \label{tab:santa-semaphores}
+    \begin{tabularx}{\linewidth}{@{}l c X@{}}
+        \toprule
+        \textbf{Tên} & \textbf{Khởi tạo} & \textbf{Mục đích} \\
+        \midrule
+        \texttt{mutex}         & 1 & Bảo vệ các biến đếm chung (\texttt{reindeerCount}, \texttt{elfCount}). \\
+        \texttt{santaSem}      & 0 & Santa chờ ở đây (ngủ). Được \texttt{signal} khi một nhóm hoàn chỉnh. \\
+        \texttt{reindeerSem}   & 0 & Rào cản cho 9 Tuần lộc đợi Santa hoàn thành \texttt{prepareSleigh()}. \\
+        \texttt{elfSem}        & 0 & Rào cản cho 3 Chú lùn đợi Santa hoàn thành \texttt{helpElves()}. \\
+        \texttt{elfMutex}      & 0 & Ngăn chú lùn mới vào cho đến khi nhóm hiện tại rời đi. \\
+        \texttt{reindeerCount} & 0 & Biến đếm số Tuần lộc đã trở về. \\
+        \texttt{elfCount}      & 0 & Biến đếm số Chú lùn đang chờ sự giúp đỡ. \\
+        \texttt{elvesReady}    & 0 & Biến đếm số chú lùn đã hoàn thành \texttt{getHelp()} và sẵn sàng rời khỏi khu vực chờ. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+
+\subsection*{Thuật toán điều độ}
+Thuật toán bao gồm logic cho ba loại tiến trình. Hàm $\texttt{wait(S)}$ và $\texttt{signal(S)}$ được dùng cho semaphore $S$.
+
+\begin{algorithm}[H]
+\caption{Tiến trình Santa}
+\begin{algorithmic}[1]
+\While{\texttt{true}}
+    \State \texttt{wait(santaSem)} \Comment{Santa ngủ và chờ được đánh thức}
+    \State \texttt{wait(mutex)}
+    \If{\texttt{reindeerCount} == 9} \Comment{Kiểm tra ưu tiên Tuần lộc}
+        \State \texttt{prepareSleigh()}
+        \For{\texttt{i} $\gets 1$ \textbf{to} 9}
+            \State \texttt{signal(reindeerSem)} \Comment{Giải phóng 9 Tuần lộc}
+        \EndFor
+        \State \texttt{reindeerCount} $\gets 0$
+    \ElsIf{\texttt{elfCount} > 0} \Comment{Santa được đánh thức bởi Chú lùn ($\ge 3$)}
+        \State \texttt{helpElves()}
+        \For{\texttt{i} $\gets 1$ \textbf{to} 3}
+            \State \texttt{signal(elfSem)} \Comment{Giải phóng 3 Chú lùn}
+        \EndFor
+    \EndIf
+    \State \texttt{signal(mutex)}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Tiến trình Tuần lộc ($9$ tiến trình)}
+\begin{algorithmic}[1]
+\State \texttt{wait(mutex)}
+\State \texttt{reindeerCount} $\gets$ \texttt{reindeerCount} + 1
+\If{\texttt{reindeerCount} == 9}
+    \State \texttt{signal(santaSem)} \Comment{Tuần lộc cuối cùng đánh thức Santa}
+\EndIf
+\State \texttt{signal(mutex)}
+\State \texttt{wait(reindeerSem)} \Comment{Chờ Santa chuẩn bị xe trượt}
+\State \texttt{getHitched()} \Comment{Tham gia đoàn xe}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Tiến trình Chú lùn ($10$ tiến trình)}
+\begin{algorithmic}[1]
+\State \texttt{wait(elfMutex)} \Comment{Khóa cổng vào để chỉ 3 chú lùn đầu tiên đi qua}
+\State \texttt{wait(mutex)}
+\State \texttt{elfCount} $\gets$ \texttt{elfCount} + 1
+\If{\texttt{elfCount} == 3}
+    \State \texttt{signal(santaSem)} \Comment{Chú lùn thứ 3 đánh thức Santa}
+\EndIf
+\State \texttt{signal(mutex)}
+\State \texttt{signal(elfMutex)} \Comment{Mở khóa cổng: Cho phép chú lùn thứ 4... vào và chờ nhóm tiếp theo}
+
+\State \texttt{wait(elfSem)} \Comment{Chờ Santa tư vấn}
+\State \texttt{getHelp()} \Comment{Nhận tư vấn}
+
+\State \texttt{wait(mutex)}
+\State \texttt{elfCount} $\gets$ \texttt{elfCount} - 1
+\State \texttt{elvesReady} $\gets$ \texttt{elvesReady} + 1 \Comment{Đánh dấu chú lùn này đã xong}
+\If{\texttt{elvesReady} == 3} \Comment{Nếu là chú lùn thứ 3 trong nhóm đã rời đi}
+    \State \texttt{elvesReady} $\gets 0$ \Comment{Đặt lại biến đếm nhóm}
+    \State \texttt{wait(elfMutex)} \Comment{Khóa cổng (elfMutex) lần nữa, ngăn nhóm mới đếm cho đến khi họ sẵn sàng}
+\EndIf
+\State \texttt{signal(mutex)}
+\end{algorithmic}
+\end{algorithm}
+
+\subsection*{Chứng minh tính hợp lý của điều độ}
+
+\begin{lemma}[Loại trừ lẫn nhau]
+Santa chỉ phục vụ một nhóm (hoặc Tuần lộc hoặc Chú lùn) tại một thời điểm.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh}]
+Việc kiểm tra điều kiện và thực hiện hành động phục vụ của Santa được đặt bên trong vùng loại trừ lẫn nhau được bảo vệ bởi $\texttt{mutex}$ (Dòng 3 - 17 trong \textit{Tiến trình Santa}). Điều kiện \texttt{If...ElseIf} đảm bảo chỉ một nhánh được thực thi cho mỗi lần Santa thức dậy, từ đó ngăn chặn việc phục vụ đồng thời.
+\end{proof}
+
+\begin{lemma}[Tiến triển]
+Khi Santa đang ngủ, nếu một nhóm Tuần lộc (9 con) hoặc một nhóm Chú lùn (3 người) đã tập hợp đủ, Santa chắc chắn sẽ thức giấc và thực hiện hành động phục vụ tương ứng mà không bị trì hoãn.
+\end{lemma}
+
+\begin{proof}[\textbf{Chứng minh}]
+Ta chứng minh hệ thống luôn tiến triển dựa trên sự khớp nối tuyệt đối giữa \textit{Điều kiện đánh thức} và \textit{Điều kiện thực thi}:
+
+    \item \textbf{Đảm bảo Santa được đánh thức (Wake-up Guarantee)}
+    Santa chỉ bị chặn tại lệnh \texttt{wait(santaSem)}. Trạng thái ngủ này chắc chắn bị phá vỡ khi:
+    
+       Con Tuần lộc cuối cùng đến: Nó tăng \texttt{reindeerCount} lên 9 và gọi \texttt{signal(santaSem)}.
+       
+       Chú lùn thứ 3 đến: Nó tăng \texttt{elfCount} lên 3 và gọi \texttt{signal(santaSem)}.
+    
+    $\Rightarrow$ Vậy, bất cứ khi nào một nhóm hình thành đủ, Santa sẽ nhận được tín hiệu để chuyển từ trạng thái \textit{Blocked} sang \textit{Ready}.
+
+    \item \textbf{Đảm bảo Santa thực hiện hành động (Execution Guarantee)}
+    Ngay khi thức dậy và giữ \texttt{mutex}, Santa thực hiện chuỗi kiểm tra logic:
+    \[
+       \text{\textbf{If }} (\texttt{reindeerCount} == 9) \quad \dots \quad \text{\textbf{ElseIf }} (\texttt{elfCount} \ge 3)
+    \]
+    Do tín hiệu \texttt{santaSem} chỉ được phát ra khi các biến đếm này đã đạt ngưỡng, nên khi Santa tỉnh dậy, ít nhất một trong hai điều kiện trên chắc chắn là đúng.
+   
+         Nếu Tuần lộc gọi: Điều kiện \texttt{If} đúng $\to$ Santa chuẩn bị xe trượt.
+         
+         Nếu Chú lùn gọi (và không có Tuần lộc): Điều kiện \texttt{ElseIf} đúng $\to$ Santa giúp đỡ.
+         
+         Nếu cả hai cùng gọi: Điều kiện \texttt{If} đúng (do ưu tiên) $\to$ Santa phục vụ Tuần lộc.
+   
+    Santa không bao giờ rơi vào trường hợp thức dậy nhưng không lọt vào nhánh nào (Deadlock logic), do đó hệ thống luôn có sự tiến triển.
+\end{proof}
+\begin{lemma}[Chờ đợi hữu hạn]
+Không tiến trình nào bị trì hoãn vô hạn.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh}]
+\textbf{Tuần lộc:} Sau khi 9 con đã về, \texttt{santaSem} được \texttt{signal}. Santa thức dậy và phục vụ (do ưu tiên). Santa thực hiện $9$ lần $\texttt{signal(reindeerSem)}$, giải phóng tất cả 9 Tuần lộc đang chờ trên $\texttt{reindeerSem}$.\\
+\textbf{Chú lùn:} Sau khi 3 chú lùn đã tập hợp, \texttt{santaSem} được \texttt{signal}. Mặc dù nhóm này có thể phải đợi nếu nhóm Tuần lộc đang chờ phục vụ, nhưng sau khi Tuần lộc xong, Santa sẽ phục vụ nhóm Chú lùn (nếu \texttt{elfCount} vẫn $\ge 3$). Santa thực hiện $3$ lần $\texttt{signal(elfSem)}$, giải phóng $3$ chú lùn đang chờ. Vì số lượng tiến trình Tuần lộc là hữu hạn và sự kiện chúng quay lại là không liên tục, sự chờ đợi của Chú lùn là hữu hạn.
+\end{proof}
+
+
+
+% ======================= Chương 4 ==================================
+\chapter{Công cụ điều độ cấp cao}
+% \section{Monitor \& Condition Variables} % TODO
+\section{Traffic Light Intersection Problem (Bài toán Ngã tư đèn giao thông)}
+
+\textbf{Nguồn gốc:}  
+Bài toán \textbf{Ngã tư đèn giao thông (Traffic Light Intersection)} được sử dụng phổ biến trong lĩnh vực \textbf{Đồng bộ hoá tiến trình (Process Synchronization)} để minh hoạ cách áp dụng cơ chế \textbf{Monitor} và \textbf{Condition Variables} trong việc điều phối tài nguyên chia sẻ.  
+
+Bài toán mô phỏng cách điều khiển luồng xe di chuyển tại một giao lộ sao cho \textbf{an toàn, không xung đột} và \textbf{tuân thủ tín hiệu đèn}.  
+Mô hình này được giới thiệu và phân tích trong các tài liệu học thuật sau:
+\begin{itemize}
+    \item \textit{Modelling and Simulation of a Multi-Phase Traffic Light Controlled Cross-Type Intersection using Timed Coloured Petri Nets}, G. R. Adesina et al., \textbf{Journal of Scientific \& Industrial Research}, 2011.
+    \item \textit{Self-Control of Traffic Lights and Vehicle Flows in Urban Road Networks}, Stefan Lämmer \& Dirk Helbing, 2008.
+    \item Ví dụ mô phỏng “\textit{Traffic Lights and Intersection}” trong bài giảng \textbf{Monitors \& Condition Synchronization} của \textbf{Magee \& Kramer (2015)}, Imperial College London.
+\end{itemize}
+
+
+\subsection*{Mô tả bài toán}
+
+Tại một ngã tư có bốn hướng giao nhau: Bắc (N), Nam (S), Đông (E), và Tây (W).  
+Mỗi hướng có dòng xe chờ đèn giao thông. Mỗi xe chỉ được phép đi khi:
+\begin{itemize}
+    \item Đèn của hướng đó đang \textbf{xanh}.
+    \item Không có xe nào từ hướng vuông góc đang băng qua ngã tư.
+\end{itemize}
+
+Đèn giao thông luân phiên bật theo chu kỳ:
+\begin{center}
+    (N, S) $\rightarrow$ Xanh, (E, W) $\rightarrow$ Đỏ  
+    \\[3pt]
+    (E, W) $\rightarrow$ Xanh, (N, S) $\rightarrow$ Đỏ
+\end{center}
+
+\subsection*{Nguyên tắc}
+
+\begin{itemize}
+    \item Tại mọi thời điểm, chỉ các xe từ một cặp hướng đối diện được phép đi (N–S hoặc E–W).
+    \item Các xe phải chờ nếu đèn hướng của mình đang đỏ.
+    \item Khi đèn đổi, các xe ở hướng đang xanh được đánh thức để đi tiếp.
+\end{itemize}
+
+\subsection*{Phân tích}
+
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{TrafficLightController (Bộ điều khiển đèn):}  
+    Theo chu kỳ thời gian, chuyển đổi trạng thái đèn giữa hai nhóm hướng.
+    \item \textbf{Car (Xe cộ):}  
+    Mỗi tiến trình xe thuộc về một hướng (N, S, E hoặc W), sẽ chờ đèn xanh rồi băng qua ngã tư.
+    \item \textbf{Monitor (Giao lộ):}  
+    Quản lý trạng thái đèn và đồng bộ việc các xe chờ / đi qua dựa trên điều kiện đèn.
+\end{enumerate}
+
+\textbf{Mô hình hoạt động tổng quát}
+
+\begin{center}
+\begin{tabular}{lcl}
+\textbf{TrafficLightController} & $\longrightarrow$ & Đổi trạng thái đèn (N–S $\leftrightarrow$ E–W) \\
+               &                    & ↓ \\
+\textbf{Monitor (Intersection)} & $\longrightarrow$ & Đánh thức các xe có đèn xanh, chặn các xe đèn đỏ \\
+               &                    & ↓ \\
+\textbf{Car tiến trình} & $\longrightarrow$ & Khi được phép, đi qua ngã tư, sau đó thoát khỏi hệ thống
+\end{tabular}
+\end{center}
+
+\textbf{Đề xuất giải pháp bằng Monitor \& Condition Variables}
+
+\begin{algorithm}[H]
+\caption{Monitor \texttt{Intersection}}
+\begin{algorithmic}[1]
+\State \textbf{shared variable:} \texttt{lightState = NS\_GREEN} \Comment{Trạng thái đèn hiện tại}
+\State \textbf{condition} \texttt{condNS, condEW} \Comment{Điều kiện chờ cho 2 hướng}
+
+\Function{arrive}{direction}
+    \If{direction $\in$ \{N, S\}} \Comment{Hướng Bắc/Nam}
+        \While{\texttt{lightState != NS\_GREEN}} \Comment{Chờ đèn xanh NS}
+            \State \texttt{wait(condNS)} \Comment{Tạm dừng xe}
+        \EndWhile
+    \ElsIf{direction $\in$ \{E, W\}} \Comment{Hướng Đông/Tây}
+        \While{\texttt{lightState != EW\_GREEN}} \Comment{Chờ đèn xanh EW}
+            \State \texttt{wait(condEW)} \Comment{Tạm dừng xe}
+        \EndWhile
+    \EndIf
+    \State \texttt{crossIntersection()} \Comment{Đi qua ngã tư}
+\EndFunction
+
+\Function{switchLight}{}
+    \If{\texttt{lightState == NS\_GREEN}} \Comment{Nếu đèn đang xanh NS}
+        \State \texttt{lightState = EW\_GREEN} \Comment{Chuyển sang đèn xanh EW}
+        \State \texttt{signalAll(condEW)} \Comment{Đánh thức xe hướng EW}
+    \Else
+        \State \texttt{lightState = NS\_GREEN} \Comment{Chuyển sang đèn xanh NS}
+        \State \texttt{signalAll(condNS)} \Comment{Đánh thức xe hướng NS}
+    \EndIf
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection*{Tiến trình Bộ điều khiển đèn (Controller)}
+
+\begin{algorithm}[H]
+\caption{Tiến trình \texttt{TrafficLightController}}
+\begin{algorithmic}[1]
+\While{\texttt{true}}
+    \State \texttt{wait(timeQuantum)} \Comment{Giữ trạng thái đèn trong một khoảng thời gian cố định}
+    \State \texttt{Intersection.switchLight()} \Comment{Đổi đèn, cho phép hướng còn lại di chuyển}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\subsection*{Tiến trình Xe (Car)}
+
+\begin{algorithm}[H]
+\caption{Tiến trình \texttt{Car(direction)}}
+\begin{algorithmic}[1]
+\State \texttt{Intersection.arrive(direction)} \Comment{Xe đến ngã tư và chờ nếu đèn đỏ}
+\State \texttt{exitIntersection()} \Comment{Thoát khỏi vùng giao nhau sau khi đi qua}
+\end{algorithmic}
+\end{algorithm}
+
+\subsection*{Chứng minh tính hợp lý của điều độ}
+
+\begin{lemma}[Loại trừ lẫn nhau]
+Không có hai xe từ các hướng vuông góc đi qua cùng lúc.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh. }]
+Monitor đảm bảo rằng chỉ các xe có cùng hướng đèn xanh mới được đánh thức.  
+Các xe hướng còn lại đều chờ trên điều kiện riêng (\texttt{condNS} hoặc \texttt{condEW}), do đó không thể giao cắt.
+\end{proof}
+
+\begin{lemma}[Tiến triển]
+Hệ thống luôn tiến triển, không xảy ra deadlock.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh. }]
+Bộ điều khiển đèn luân phiên chuyển trạng thái \texttt{lightState} theo chu kỳ thời gian.  
+Mỗi nhóm xe đều có thời điểm được đánh thức và đi qua, nên không có tiến trình nào chờ vô hạn.
+\end{proof}
+
+\begin{lemma}[Chờ đợi hữu hạn]
+Mỗi xe đều có cơ hội đi qua trong thời gian hữu hạn.
+\end{lemma}
+\begin{proof}[\textbf{Chứng minh. }]
+Vì đèn giao thông luôn luân phiên giữa hai nhóm hướng, nên mọi xe đều được phục vụ trong giới hạn thời gian cố định của chu kỳ đèn.
+\end{proof}
+\section*{Kết quả và Thảo luận}
+
+\begin{itemize}
+    \item Hệ thống đảm bảo rằng chỉ có xe từ một cặp hướng đối diện (N--S hoặc E--W) được phép đi qua ngã tư tại một thời điểm, đảm bảo an toàn giao thông và tránh va chạm.
+    \item Việc sử dụng Monitor kết hợp với các biến điều kiện (condition variables) giúp đồng bộ hóa việc chờ đèn và cho phép xe đi khi đèn xanh một cách hiệu quả, tránh tình trạng tranh chấp tài nguyên.
+    \item TrafficLightController theo chu kỳ thời gian cố định đảm bảo tính tuần hoàn và công bằng giữa các hướng, không để hướng nào bị bỏ quên hay chờ đợi vô thời hạn.
+    \item Hệ thống không xảy ra deadlock hay starvation, vì mỗi nhóm xe được đánh thức theo chu kỳ đều đặn.
+    \item Tuy nhiên, việc chu kỳ đèn cố định có thể chưa tối ưu trong các tình huống giao thông thực tế khi lưu lượng các hướng không đều nhau; trong thực tế có thể cần mở rộng bằng cách áp dụng các thuật toán điều khiển đèn thông minh hơn dựa trên cảm biến và lưu lượng thực tế.
+\end{itemize}
+
+
+
+\section{Readers - Writers(Bài toán Người đọc - Người ghi)}
+
+
+\subsection*{Mô tả bài toán}
+Cho một đối tượng dữ liệu (như một tệp tin) được chia sẻ giữa nhiều tiến trình đồng thời. Các tiến trình này được chia thành hai loại:
+\begin{itemize}
+    \item \textbf{Reader (Người đọc):} Chỉ đọc dữ liệu, không sửa đổi.
+    \item \textbf{Writer (Người ghi):} Có thể đọc hoặc sửa đổi dữ liệu.
+\end{itemize}
+Thiết kế thuật toán điều phối truy cập để đảm bảo tính nhất quán của dữ liệu.
+
+\subsection*{Nguyên tắc}
+Việc truy cập vùng dữ liệu dùng chung phải tuân thủ các quy tắc sau:
+\begin{enumerate}
+    \item Nhiều Reader có thể truy cập đồng thời vào vùng dữ liệu.
+    \item Một Writer phải có quyền truy cập \textbf{độc quyền} vào vùng dữ liệu. Khi một Writer đang truy cập, không một tiến trình nào khác (cả Reader và Writer khác) được phép truy cập.
+\end{enumerate}
+
+
+\subsection*{Giải pháp 1: Ưu tiên Reader (Sử dụng Semaphore)}
+Giải pháp này sử dụng hai đèn báo và một biến đếm toàn cục:
+\begin{itemize}
+    \item \textbf{mutex:} Một đèn báo nhị phân dùng để bảo vệ biến \texttt{readcount} (khởi tạo bằng 1).
+    \item \textbf{wrt:} Một đèn báo dùng để đảm bảo quyền truy cập độc quyền cho Writer. Nó cũng được Reader đầu tiên sử dụng để khóa Writer (khởi tạo bằng 1).
+    \item \textbf{readcount:} Một biến để đếm số lượng Reader hiện đang ở trong vùng găng (khởi tạo bằng 0).
+\end{itemize}
+
+\subsection*{Thuật toán điều độ}
+
+\begin{algorithm}[H] % [H] nghĩa là "đặt ở đây" (here)
+\caption{Thuật toán cho tiến trình Writer (Ưu tiên Reader)}
+\begin{algorithmic}[1]
+\While{true}
+    \State \textit{// Vùng không găng }
+    \State \textbf{wait(wrt)}
+    \State \textit{// Đoạn găng (Ghi dữ liệu)}
+    \State \textbf{signal(wrt)}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Thuật toán cho tiến trình Reader (Ưu tiên Reader)}
+\begin{algorithmic}[1]
+\While{true}
+    \State \textit{// Vùng không găng }
+    \State \textbf{wait(mutex)}
+    \State \texttt{readcount $\leftarrow$ readcount + 1}
+    \If{\texttt{readcount == 1}} \Comment{Là Reader đầu tiên}
+        \State \textbf{wait(wrt)} \Comment{Khóa Writer}
+    \EndIf
+    \State \textbf{signal(mutex)}
+    
+    \State \textit{// Đoạn găng (Đọc dữ liệu)}
+    
+    \State \textbf{wait(mutex)}
+    \State \texttt{readcount $\leftarrow$ readcount - 1}
+    \If{\texttt{readcount == 0}} \Comment{Là Reader cuối cùng}
+        \State \textbf{signal(wrt)} \Comment{Mở khóa cho Writer}
+    \EndIf
+    \State \textbf{signal(mutex)}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\subsection*{Chứng minh tính hợp lý của điều độ}
+
+\begin{lemma}[Loại trừ lẫn nhau]
+Nếu một Writer ở trong đoạn găng, không tiến trình nào khác ở trong đoạn găng. Nếu một hoặc nhiều Reader đang ở trong đoạn găng thì Writer không được vào đoạn găng.
+\end{lemma}
+
+\begin{proof}[\textbf{Chứng minh}]
+\
+\begin{itemize}
+    \item \textbf{TH1: Một Writer khác (W2) muốn vào đoạn găng trong khi có một Writer(W1) trong đoạn găng.} W2 sẽ thực hiện \textbf{wait(wrt)} (dòng 3) và bị chặn, vì W1 đã gọi wait(wrt) trước đó.
+    
+    \item \textbf{TH2: Một Reader (R) muốn vào đoạn găng trong khi đã có W1 trong đoạn găng.} R sẽ thực hiện \textbf{wait(mutex)} (thành công), tăng \texttt{readcount} lên 1 (dòng 4). Vì W1 đang ở trong đoạn găng nên \texttt{readcount} trước đó phải bằng 0. Do \texttt{readcount == 1}, R sẽ thực hiện \textbf{wait(wrt)} (dòng 6) và bị chặn, vì \texttt{wrt == 0}.
+
+    \item \textbf{TH3: Một Writer (W) muốn vào đoạn găng trong khi đã có một hoặc nhiều Reader trong đoạn găng.} W sẽ thực hiện \textbf{wait(wrt)} (dòng 3) và bị chặn, vì \texttt{wrt} đang bị giữ bởi Reader.
+\end{itemize}
+Chỉ khi Reader cuối cùng (dòng 12) thực hiện \textbf{signal(wrt)}, một Writer đang chờ mới có thể vào. Rõ ràng, nhiều Reader có thể cùng ở trong đoạn găng vì họ không bị chặn bởi \texttt{wrt} (trừ người đầu tiên) và \texttt{mutex} chỉ được giữ trong thời gian rất ngắn (khi cập nhật \texttt{readcount}).
+\end{proof}
+
+\begin{lemma}[Tiến triển]
+Nếu tập tin sẵn sàng mà có Writter yêu cầu ghi hoặc Reader yêu cầu đọc thì phải Writter, Reader phải được đáp ứng. 
+\end{lemma}
+
+\begin{proof}[\textbf{Chứng minh}]
+Giả sử không có tiến trình nào sử dụng tài nguyên găng (\texttt{readcount == 0} và không có Writer nào). Lúc này, \texttt{wrt == 1} và \texttt{mutex == 1}.
+\begin{itemize}
+    \item \textbf{TH1: Một Writer (W) đến.} W gọi \textbf{wait(wrt)} (thành công) và vào đoạn găng.
+    \item \textbf{TH2: Một Reader (R) đến.} R gọi \textbf{wait(mutex)} (thành công), \texttt{readcount} thành 1, gọi \textbf{wait(wrt)} (thành công), gọi \textbf{signal(mutex)} và vào đoạn găng.
+\end{itemize}
+Nếu cả R và W cùng đến, tùy thuộc vào lịch trình, một trong hai sẽ lấy được đèn báo (hoặc \texttt{wrt} hoặc \texttt{mutex}) trước và được vào. Quyết định được đưa ra, không bị trì hoãn.
+\end{proof}
+
+\begin{lemma}[Chờ đợi hữu hạn]
+Một tiến trình không bị "chết đói" .
+\end{lemma}
+
+\begin{proof}[\textbf{Chứng minh}]
+Giải pháp này \textbf{không thỏa mãn} Chờ đợi hữu hạn cho Writer.
+
+Giả sử một Writer (W) đang chờ tại \textbf{wait(wrt)} (dòng 3). Cùng lúc đó, có một Reader (R1) đang ở trong đoạn găng.
+\begin{itemize}
+    \item \textbf{TH1:} Một Reader mới (R2) đến. R2 thực hiện \textbf{wait(mutex)}, tăng \texttt{readcount} lên 2. R2 không cần gọi \textbf{wait(wrt)} vì \texttt{readcount != 1}. R2 vào đoạn găng.
+    \item \textbf{TH2:} R1 rời khỏi đoạn găng. R1 thực hiện \textbf{wait(mutex)}, giảm \texttt{readcount} còn 1. R1 không gọi \textbf{signal(wrt)} vì \texttt{readcount != 0}.
+    \item \textbf{TH3:} Một Reader mới (R3) đến. R3 vào đoạn găng.
+\end{itemize}
+Nếu các Reader mới liên tục đến trước khi Reader cuối cùng rời đi, \texttt{readcount} sẽ không bao giờ bằng 0. Do đó, lời gọi \textbf{signal(wrt)} (dòng 13) sẽ không bao giờ được thực thi, và Writer W sẽ bị "chết đói", chờ đợi vô hạn. Đây là lý do giải pháp này được gọi là "ưu tiên Reader".
+\end{proof}
+
+
+
+\subsection*{Giải pháp 2: Ưu tiên Writer (Sử dụng Semaphore)}
+Giải pháp này đảm bảo rằng một khi Writer báo hiệu muốn vào, nó sẽ được ưu tiên trước tất cả các Reader mới đến. Điều này ngăn chặn Writer bị "chết đói" nhưng vẫn có thể xảy ra việc Reader bị chờ đợi vô hạn.
+
+Các đèn báo và biến sử dụng:
+\begin{itemize}
+    \item \texttt{mutex\_r, mutex\_w:} Đèn báo nhị phân để bảo vệ 2 biến đếm (khởi tạo bằng 1).
+    \item \texttt{readcount, writecount:} Biến đếm số Reader/Writer (khởi tạo bằng 0).
+    \item \texttt{read\_try:} Đèn báo cho phép Reader thử vào (khởi tạo bằng 1).
+    \item \texttt{resource:} Đèn báo bảo vệ tài nguyên găng (khởi tạo bằng 1).
+\end{itemize}
+
+\subsection*{Thuật toán điều độ}
+
+\begin{algorithm}[H]
+\caption{Thuật toán cho tiến trình Writer (Ưu tiên Writer)}
+\begin{algorithmic}[1]
+\While{true}
+    \State \textbf{wait(mutex\_w)}
+    \State \texttt{writecount $\leftarrow$ writecount + 1}
+    \If{\texttt{writecount == 1}} \Comment{Là Writer đầu tiên}
+        \State \textbf{wait(read\_try)} \Comment{Chặn Reader mới}
+    \EndIf
+    \State \textbf{signal(mutex\_w)}
+    
+    \State \textbf{wait(resource)}
+    \State \textit{// Đoạn găng (Ghi dữ liệu)}
+    \State \textbf{signal(resource)}
+    
+    \State \textbf{wait(mutex\_w)}
+    \State \texttt{writecount $\leftarrow$ writecount - 1}
+    \If{\texttt{writecount == 0}} \Comment{Là Writer cuối cùng}
+        \State \textbf{signal(read\_try)} \Comment{Cho phép Reader vào}
+    \EndIf
+    \State \textbf{signal(mutex\_w)}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Thuật toán cho tiến trình Reader (Ưu tiên Writer)}
+\begin{algorithmic}[1]
+\While{true}
+    \State \textbf{wait(read\_try)} \Comment{Kiểm tra Writer có đang chờ không}
+    \State \textbf{wait(mutex\_r)}
+    \State \texttt{readcount $\leftarrow$ readcount + 1}
+    \If{\texttt{readcount == 1}} \Comment{Là Reader đầu tiên}
+        \State \textbf{wait(resource)} \Comment{Chặn Writer}
+    \EndIf
+    \State \textbf{signal(mutex\_r)}
+    \State \textbf{signal(read\_try)} \Comment{Cho phép Reader khác vào}
+    
+    \State \textit{// Đoạn găng (Đọc dữ liệu)}
+    
+    \State \textbf{wait(mutex\_r)}
+    \State \texttt{readcount $\leftarrow$ readcount - 1}
+    \If{\texttt{readcount == 0}} \Comment{Là Reader cuối cùng}
+        \State \textbf{signal(resource)} \Comment{Cho phép Writer vào}
+    \EndIf
+    \State \textbf{signal(mutex\_r)}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+
+\newpage
+\subsection*{Giải pháp 3: Điều độ công bằng (Sử dụng Semaphore)}
+Giải pháp này sử dụng thêm một đèn báo \texttt{controller} có vai trò như một "hàng đợi" để đảm bảo tính công bằng giữa Reader và Writer.
+
+Các đèn báo và biến sử dụng:
+\begin{itemize}
+    \item \texttt{controller:} Đèn báo đóng vai trò như một hàng đợi chung (khởi tạo bằng 1).
+    \item \texttt{wrt:} Một đèn báo dùng để đảm bảo quyền truy cập độc quyền cho Writer (như giải pháp 1).
+    \item \texttt{mutex:} Đèn báo nhị phân để bảo vệ \texttt{readcount} (khởi tạo bằng 1).
+    \item \texttt{readcount:} Biến đếm số Reader (khởi tạo bằng 0).
+\end{itemize}
+
+\subsection*{Thuật toán điều độ}
+
+\begin{algorithm}[H]
+\caption{Thuật toán cho tiến trình Writer (Công bằng)}
+\begin{algorithmic}[1]
+\While{true}
+    \State \textbf{wait(controller)} \Comment{Vào hàng đợi chung}
+    \State \textbf{wait(wrt)} \Comment{Yêu cầu tài nguyên độc quyền}
+    \State \textbf{signal(controller)} \Comment{Ra khỏi hàng đợi}
+    
+    \State \textit{// Đoạn găng (Ghi dữ liệu)}
+    
+    \State \textbf{signal(wrt)} \Comment{Giải phóng tài nguyên}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Thuật toán cho tiến trình Reader (Công bằng)}
+\begin{algorithmic}[1]
+\While{true}
+    \State \textbf{wait(controller)} \Comment{Vào hàng đợi chung}
+    \State \textbf{wait(mutex)}
+    \State \texttt{readcount $\leftarrow$ readcount + 1}
+    \If{\texttt{readcount == 1}} \Comment{Là Reader đầu tiên}
+        \State \textbf{wait(wrt)} \Comment{Yêu cầu tài nguyên}
+    \EndIf
+    \State \textbf{signal(mutex)}
+    \State \textbf{signal(controller)} \Comment{Ra khỏi hàng đợi, cho phép người kế tiếp}
+    
+    \State \textit{// Đoạn găng (Đọc dữ liệu)}
+    
+    \State \textbf{wait(mutex)}
+    \State \texttt{readcount $\leftarrow$ readcount - 1}
+    \If{\texttt{readcount == 0}} \Comment{Là Reader cuối cùng}
+        \State \textbf{signal(wrt)} \Comment{Giải phóng tài nguyên}
+    \EndIf
+    \State \textbf{signal(mutex)}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+
+\newpage
+\subsection*{Giải pháp 4: Điều độ công bằng (Sử dụng Monitor)}
+Giải pháp này sử dụng \textbf{Monitor}, một công cụ điều độ cấp cao. Monitor tự động cung cấp một khóa (mutex) nội tại, đảm bảo rằng chỉ một tiến trình có thể thực thi mã \textit{bên trong} Monitor tại một thời điểm. Thay vì dùng \texttt{wait/signal} trên đèn báo, các tiến trình sử dụng các \textit{biến điều kiện} (Condition Variables) để chờ (bằng cách tạm thời rời khỏi Monitor) và đánh thức lẫn nhau.
+
+\subsection*{Mô tả Monitor}
+Monitor đóng gói các biến trạng thái và biến điều kiện:
+\begin{itemize}
+    \item \textbf{Khóa nội tại (implicit lock):} Tự động được Monitor quản lý.
+    \item \texttt{active\_readers (int):} Số Reader đang đọc (khởi tạo bằng 0).
+    \item \texttt{active\_writer (bool):} \texttt{true} nếu có Writer đang ghi (khởi tạo bằng \texttt{false}).
+    \item \texttt{waiting\_readers (int):} Số Reader đang chờ (khởi tạo bằng 0).
+    \item \texttt{waiting\_writers (int):} Số Writer đang chờ (khởi tạo bằng 0).
+    \item \texttt{can\_read (Condition):} Hàng đợi cho các Reader bị chặn.
+    \item \texttt{can\_write (Condition):} Hàng đợi cho các Writer bị chặn.
+\end{itemize}
+
+\subsection*{Thuật toán điều độ}
+Monitor cung cấp 4 hàm (procedures) mà các tiến trình sẽ gọi.
+\begin{algorithm}[H]
+\caption{Định nghĩa Monitor FairReadWrite}
+\begin{algorithmic}[1]
+\Require
+    \State \texttt{active\_readers} $\leftarrow$ 0, \texttt{active\_writer} $\leftarrow$ false
+    \State \texttt{waiting\_readers} $\leftarrow$ 0, \texttt{waiting\_writers} $\leftarrow$ 0
+    \State \texttt{can\_read}, \texttt{can\_write} : Biến điều kiện (Condition)
+
+\Procedure{StartRead}{} \Comment{Reader gọi khi muốn vào}
+    \State \Comment{Lock nội tại được Monitor tự động lấy}
+    \State \texttt{waiting\_readers $\leftarrow$ waiting\_readers + 1}
+    \While{\texttt{active\_writer} OR \texttt{waiting\_writers > 0}}
+        \State \texttt{can\_read.wait()} \Comment{Ngủ, tự động nhả lock}
+    \EndWhile
+    \State \texttt{waiting\_readers $\leftarrow$ waiting\_readers - 1}
+    \State \texttt{active\_readers $\leftarrow$ active\_readers + 1}
+    \State \Comment{Lock nội tại được Monitor tự động nhả khi thoát}
+\EndProcedure
+\Statex
+\Procedure{EndRead}{} \Comment{Reader gọi khi rời đi}
+    \State \Comment{Lock nội tại được tự động lấy}
+    \State \texttt{active\_readers $\leftarrow$ active\_readers - 1}
+    \If{\texttt{active\_readers == 0}}
+        \State \texttt{can\_write.signal()} \Comment{Đánh thức 1 Writer (nếu có)}
+    \EndIf
+    \State \Comment{Lock nội tại được tự động nhả}
+\EndProcedure
+\Statex
+\Procedure{StartWrite}{} \Comment{Writer gọi khi muốn vào}
+    \State \Comment{Lock nội tại được tự động lấy}
+    \State \texttt{waiting\_writers $\leftarrow$ waiting\_writers + 1}
+    \While{\texttt{active\_writer} OR \texttt{active\_readers > 0}}
+        \State \texttt{can\_write.wait()} \Comment{Ngủ, tự động nhả lock}
+    \EndWhile
+    \State \texttt{waiting\_writers $\leftarrow$ waiting\_writers - 1}
+    \State \texttt{active\_writer $\leftarrow$ true}
+    \State \Comment{Lock nội tại được tự động nhả}
+\EndProcedure
+\Statex
+\Procedure{EndWrite}{} \Comment{Writer gọi khi rời đi}
+    \State \Comment{Lock nội tại được tự động lấy}
+    \State \texttt{active\_writer $\leftarrow$ false}
+    \If{\texttt{waiting\_writers > 0}} \Comment{Ưu tiên Writer đang chờ (FIFO)}
+        \State \texttt{can\_write.signal()}
+    \ElsIf{\texttt{waiting\_readers > 0}}
+        \State \texttt{can\_read.broadcast()} \Comment{Đánh thức TẤT CẢ Reader}
+    \EndIf
+    \State \Comment{Lock nội tại được tự động nhả}
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Cách các tiến trình sử dụng Monitor:}
+Các tiến trình Reader và Writer giờ đây chỉ cần gọi các hàm của Monitor.
+
+\begin{algorithm}[H]
+\caption{Thuật toán cho tiến trình Writer (sử dụng Monitor)}
+\begin{algorithmic}[1]
+\While{true}
+    \State \textit{// Vùng không găng }
+    \State \texttt{FairReadWrite.StartWrite()} \Comment{Yêu cầu vào đoạn găng}
+    \State \textit{// Đoạn găng (Ghi dữ liệu)}
+    \State \texttt{FairReadWrite.EndWrite()} \Comment{Rời khỏi đoạn găng}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Thuật toán cho tiến trình Reader (sử dụng Monitor)}
+\begin{algorithmic}[1]
+\While{true}
+    \State \textit{// Vùng không găng}
+    \State \texttt{FairReadWrite.StartRead()} \Comment{Yêu cầu vào đoạn găng}
+    \State \textit{// Đoạn găng (Đọc dữ liệu)}
+    \State \texttt{FairReadWrite.EndRead()} \Comment{Rời khỏi đoạn găng}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+
+\section{The Elevator Problem (Bài toán Thang máy)}
+\textbf{Nguồn gốc:}
+Bài toán này được lấy ý tưởng trực tiếp từ các thuật toán lập lịch ổ đĩa (Disk Scheduling) trong hệ điều hành, cụ thể là thuật toán \textbf{SCAN}, hay còn có biệt danh là **Thuật toán Thang máy (Elevator Algorithm)**.
+
+\subsection*{Mô tả bài toán}
+Thiết kế phần mềm điều khiển cho một thang máy trong một tòa nhà có \textbf{M} tầng để phục vụ \textbf{N} hành khách (People).
+\begin{itemize}
+    \item \textbf{Thang máy (Elevator):} Một tiến trình (luồng) điều khiển duy nhất.
+    \item \textbf{Hành khách (People):} \textbf{N} tiến trình (luồng) client, mỗi người muốn đi từ tầng `A` đến tầng `B`.
+    \item \textbf{Tài nguyên găng:} Trạng thái chung của hệ thống, bao gồm:
+    \begin{itemize}
+        \item Các nút bấm yêu cầu bên ngoài.
+        \item Các nút bấm chọn tầng bên trong.
+        \item Trạng thái của thang máy: tầng hiện tại, hướng đi, đang chạy, đang dừng, cửa mở/đóng.
+    \end{itemize}
+\end{itemize}
+
+\subsection*{Nguyên tắc}
+\begin{enumerate}
+    \item \textbf{Hành khách gọi (Bên ngoài):} Một hành khách ở tầng `i` bấm nút `Lên` (hoặc `Xuống`). Tiến trình hành khách này sau đó phải \textbf{chờ} thang máy đến.
+    \item \textbf{Hành khách chọn (Bên trong):} Khi hành khách đã vào trong, họ bấm nút tầng `j`.
+    \item \textbf{Thang máy di chuyển:} Tiến trình thang máy phải quyết định di chuyển (lên/xuống) hoặc dừng lại.
+    \item \textbf{Vào/Ra (Board/Unboard):} Khi thang máy dừng ở một tầng, nó phải mở cửa, \textbf{chờ} một khoảng thời gian (hoặc chờ tín hiệu) để hành khách ra (nếu đây là tầng đích) và hành khách mới vào (nếu có người đang chờ), sau đó đóng cửa.
+\end{enumerate}
+
+\subsection*{Phân tích và đề xuất giải pháp: Thuật toán SCAN}
+
+
+Thang máy sẽ đi theo một hướng (giả sử đi lên), phục vụ tất cả các yêu cầu có thể trên đường đi (cả gọi bên ngoài và chọn bên trong). Chỉ khi không còn yêu cầu nào ở phía trên, nó mới đảo hướng thành xuống và bắt đầu phục vụ các yêu cầu đi xuống.
+
+\textbf{Mô tả chi tiết giải pháp (Monitor):}
+Chúng ta sẽ thiết kế một \texttt{ElevatorMonitor} để quản lý toàn bộ logic.
+\begin{itemize}
+    \item \textbf{Trạng thái (bên trong Monitor):} Toàn bộ các biến trạng thái (các mảng `requests[]`, `current\_floor`, `direction`, `state`).
+    \item \textbf{Logic điều độ (bên trong Monitor):} Thuật toán \textbf{SCAN} sẽ là logic cốt lõi mà tiến trình \texttt{ElevatorThread} thực thi.
+    \item \textbf{Biến điều kiện (bên trong Monitor):}
+    \begin{itemize}
+        \item \texttt{cv\_elevator\_idle:} Thang máy chờ trên biến này khi nó rảnh.
+        \item \texttt{cv\_floor\_arrival[M]}: Một mảng các CV (mỗi tầng 1 cái). Hành khách (cả bên trong và bên ngoài) sẽ chờ trên CV của tầng tương ứng.
+    \end{itemize}
+\end{itemize}
+
+
+\subsection*{Thuật toán điều độ}
+
+\paragraph{Cấu trúc Monitor:}
+Chúng ta định nghĩa một đối tượng \texttt{ElevatorMonitor}. Tất cả các hàm \texttt{Procedure} dưới đây đều là hàm thành viên của Monitor và \textbf{tự động được khóa} khi gọi.
+
+
+
+% --- PHẦN 1: KHAI BÁO & INTERFACE KHÁCH ---
+\begin{algorithm}[H]
+\caption{Định nghĩa Monitor ElevatorMonitor (Phần 1: Trạng thái \& Giao diện cho Hành khách)}
+\begin{algorithmic}[1]
+    
+\State \textbf{Monitor} \texttt{ElevatorMonitor} \{
+\State \textit{// Biến Trạng thái (Nội bộ, được bảo vệ) }
+\State \texttt{current\_floor (int), direction (UP, DOWN, IDLE), state (MOVING, STOPPED)}
+\State \texttt{requests\_up[M], requests\_down[M], requests\_panel[M] (bool[])}
+\Statex
+\State \textit{// Biến Điều kiện (Nội bộ, được bảo vệ) }
+
+\State \texttt{cv\_elevator\_idle (Condition)}
+\State \texttt{cv\_floor\_arrival[M] (Condition[])}
+\Statex
+\State \textit{// Giao diện (API) cho Hành khách (Client) }
+\Procedure{CallOutside}{from\_floor, to\_floor}
+    \If{to\_floor > from\_floor} \State \texttt{requests\_up[from\_floor] $\leftarrow$ true}
+    \Else \State \texttt{requests\_down[from\_floor] $\leftarrow$ true}
+    \EndIf
+    \State \texttt{cv\_elevator\_idle.signal()} \Comment{Đánh thức thang máy nếu nó rảnh}
+\EndProcedure
+\Statex
+\Procedure{SelectInside}{to\_floor}
+    \State \texttt{requests\_panel[to\_floor] $\leftarrow$ true}
+    \State \texttt{cv\_elevator\_idle.signal()}
+\EndProcedure
+\Statex
+\Procedure{WaitForFloor}{floor}
+    \While{\texttt{current\_floor $\neq$ floor} OR \texttt{state $\neq$ STOPPED}}
+        \State \texttt{cv\_floor\_arrival[floor].wait()} \Comment{Tự động nhả khóa & ngủ}
+    \EndWhile
+\EndProcedure
+\State \textit{// (Còn tiếp phần điều khiển thang máy ở bảng sau...)}
+\end{algorithmic}
+\end{algorithm}
+% --- PHẦN 2: LOGIC THANG MÁY ---
+\begin{algorithm}[H]
+\caption{Định nghĩa Monitor ElevatorMonitor (Phần 2: Logic Thang máy)}
+\begin{algorithmic}[1]
+\State \textit{// (...Tiếp theo phần 1)}
+\State \textit{// Giao diện (API) cho Thang máy }
+\Function{DecideAndMove}{} \textbf{returns} \texttt{bool} (should\_stop)
+    \While{\textit{AllRequestsAreClear()}}
+        \State \texttt{direction $\leftarrow$ IDLE}
+        \State \texttt{cv\_elevator\_idle.wait()} \Comment{Tự động nhả khóa & ngủ}
+    \EndWhile
+    
+    \If{\texttt{direction == IDLE}} \State \texttt{direction $\leftarrow$ UP} \EndIf
+    
+    \If{\texttt{direction == UP} AND \textit{NoRequestsAbove(current\_floor)}}
+        \State \texttt{direction $\leftarrow$ DOWN}
+    \ElsIf{\texttt{direction == DOWN} AND \textit{NoRequestsBelow(current\_floor)}}
+        \State \texttt{direction $\leftarrow$ UP}
+    \EndIf
+    
+    \State \texttt{state $\leftarrow$ MOVING}
+    \If{\texttt{direction == UP}} \State \texttt{current\_floor $\leftarrow$ current\_floor + 1}
+    \Else \State \texttt{current\_floor $\leftarrow$ current\_floor - 1}
+    \EndIf
+    
+    \If{\textit{ShouldStopAt(current\_floor, direction)}} \textbf{return} \texttt{true}
+    \Else \textbf{return} \texttt{false}
+    \EndIf
+\EndFunction
+\Statex
+\Procedure{OpenDoorAndSignal}{}
+    \State \texttt{state $\leftarrow$ STOPPED}
+    \State \texttt{requests\_panel[current\_floor] $\leftarrow$ false}
+    \If{\texttt{direction == UP}} \State \texttt{requests\_up[current\_floor] $\leftarrow$ false}
+    \Else \State \texttt{requests\_down[current\_floor] $\leftarrow$ false}
+    \EndIf
+    
+    \State \texttt{cv\_floor\_arrival[current\_floor].broadcast()} \Comment{Đánh thức mọi người}
+\EndProcedure
+\State \textbf{\} \Comment{Kết thúc Monitor}}
+\end{algorithmic}
+\end{algorithm}
+
+
+\paragraph{Mã giả cho các tiến trình:}
+Các tiến trình bên ngoài (Hành khách và Thang máy) giờ chỉ cần gọi các hàm của Monitor.
+
+\begin{algorithm}[H]
+\caption{Thuật toán cho tiến trình Hành khách (Person)}
+\Require \texttt{MyMonitor} (một thể hiện của \texttt{ElevatorMonitor})
+\begin{algorithmic}[1]
+\Procedure{PersonThread}{from\_floor, to\_floor}
+    \State \textit{// 1. Gọi thang máy }
+    \State \texttt{MyMonitor.CallOutside(from\_floor, to\_floor)}
+    \State
+    \State \textit{// 2. Chờ thang máy đến }
+    \State \texttt{MyMonitor.WaitForFloor(from\_floor)}
+    \State
+    \State \textit{// 3. Lên tàu và bấm nút}
+    \State \texttt{MyMonitor.SelectInside(to\_floor)}
+    \State
+    \State \textit{// 4. Chờ đến tầng đích}
+    \State \texttt{MyMonitor.WaitForFloor(to\_floor)}
+    \State
+    \State \textit{// Hành khách rời đi}
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Thuật toán cho tiến trình Thang máy (Elevator)}
+\Require \texttt{MyMonitor} (một thể hiện của \texttt{ElevatorMonitor})
+\begin{algorithmic}[1]
+\Procedure{ElevatorThread}{}
+\While{true}
+    \State \texttt{should\_stop $\leftarrow$ MyMonitor.DecideAndMove()}
+    
+    \State \textit{sleep(MOVE\_ONE\_FLOOR\_DURATION)} \Comment{Mô phỏng (BÊN NGOÀI MONITOR)}
+    
+    \If{\texttt{should\_stop}}
+        \State \texttt{MyMonitor.OpenDoorAndSignal()}
+        \State \textit{sleep(DOOR\_OPEN\_DURATION)} \Comment{Mô phỏng (BÊN NGOÀi MONITOR)}
+    \EndIf
+\EndWhile
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+
+\subsection*{Chứng minh tính hợp lý của điều độ}
+
+\begin{lemma}[Loại trừ lẫn nhau]
+Không được có hai tiến trình cùng lúc sửa đổi trạng thái chung.
+\end{lemma}
+
+\begin{proof}[\textbf{Chứng minh}]
+Giải pháp này \textbf{thỏa mãn} yêu cầu.
+Toàn bộ giải pháp được thiết kế theo mô hình Monitor. Tất cả các hàm (ví dụ: \texttt{CallOutside}, \texttt{DecideAndMove}) đều là một phần của Monitor. Theo định nghĩa, Monitor đảm bảo chỉ một luồng có thể thực thi mã \texttt{bên trong} Monitor tại một thời điểm. Mọi hoạt động đọc/ghi tài nguyên găng đều xảy ra bên trong các hàm này, do đó chúng được bảo vệ hoàn toàn khỏi race condition.
+\end{proof}
+
+
+\begin{lemma}[Tiến triển]
+Nếu thang máy đang ở trạng thái nghỉ (IDLE) và có một yêu cầu mới được đưa ra, thang máy phải được kích hoạt để bắt đầu phục vụ yêu cầu đó.
+\end{lemma}
+
+\begin{proof}[\textbf{Chứng minh}]
+Giải pháp này \textbf{thỏa mãn} yêu cầu.
+Khi không có yêu cầu nào, tiến trình Thang máy (\texttt{ElevatorThread}) sẽ gọi hàm \texttt{DecideAndMove}. Bên trong hàm này, điều kiện \texttt{AllRequestsAreClear()} là đúng, khiến thang máy đi vào trạng thái chờ trên biến điều kiện \texttt{cv\_elevator\_idle.wait()} .
+
+Khi một Hành khách đưa ra yêu cầu mới, họ sẽ gọi \texttt{CallOutside} hoặc \texttt{SelectInside}. Cả hai hàm này đều thực hiện lệnh \texttt{cv\_elevator\_idle.signal()}.
+
+Tín hiệu này sẽ đánh thức tiến trình Thang máy đang chờ, giúp nó thoát khỏi vòng lặp \texttt{while} (vì \texttt{AllRequestsAreClear()} giờ là \texttt{false}) và bắt đầu di chuyển để phục vụ. Điều này đảm bảo hệ thống luôn tiến triển khi có yêu cầu.
+\end{proof}
+\begin{lemma}[Chờ đợi hữu hạn]
+Một hành khách ở một tầng không bị chờ đợi vô hạn.
+\end{lemma}
+
+\begin{proof}[\textbf{Chứng minh}]
+Giải pháp này \textbf{thỏa mãn} yêu cầu.
+Thuật toán SCAN trong mã giả đảm bảo tính công bằng này. Vì thang máy di chuyển theo một chu trình quét đầy đủ (quét hết lên, rồi quét hết xuống), nó được đảm bảo sẽ ghé qua mọi tầng. Một hành khách ở tầng 2 gọi lên (gọi \texttt{CallOutside}) sẽ được phục vụ.
+Khi thang máy đến tầng 2 và dừng, hàm \texttt{OpenDoorAndSignal} sẽ được gọi, thực thi \texttt{cv\_floor\_arrival[2].broadcast()}, đánh thức hành khách đang chờ trong hàm \texttt{WaitForFloor}. Không ai bị chờ đợi vô hạn.
+\end{proof}
+
+
+% ======================= (Tuỳ chọn) Chương 5 =======================
+% \chapter*{Đánh giá \& khuyến nghị (tuỳ chọn)}
+% \addcontentsline{toc}{chapter}{Đánh giá \& khuyến nghị (tuỳ chọn)}
+% TODO
+
+\begin{thebibliography}{9}
+\bibitem{haipd} Phạm Đăng Hải, \textit{Nguyên lí hệ điều hành}.
+\bibitem{tanenbaum} A. S. Tanenbaum, H. Bos, \textit{Modern Operating Systems}.
+
+\bibitem{silberschatz}
+{A. Silberschatz, P. B. Galvin, G. G. Gagne}, 
+\textit{Operating System Concepts}.
+\bibitem{stallings} William Stallings, \textit{Operating Systems: Internals and Design Principles}.
+\bibitem{lamport1974}
+Leslie Lamport, A New Solution of Dijkstra's Concurrent Programming Problem.
+\bibitem{Courtois, Heymans, Parnas}
+\textit{P.J. Courtois, F. Heymans, D.L. Parnas, Concurrent control with "readers" and "writers".}
+\bibitem{hailperin} Max Hailperin, \textit{Operating Systems and Middleware}.
+
+\end{thebibliography}
+
+\end{document}
